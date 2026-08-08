@@ -208,3 +208,47 @@ body {
 .btn-delete:hover {
   opacity: 1;
 }
+/* --- NOWE STYLE DLA PANELU GŁÓWNEGO --- */
+
+.hidden {
+  display: none !important;
+}
+
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.project-card {
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid var(--border-color);
+}
+
+.project-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  border-color: var(--primary-color);
+}
+
+.project-card h3 {
+  margin-bottom: 12px;
+  font-size: 18px;
+  color: var(--primary-color);
+}
+
+.project-card p {
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.project-card .project-meta {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+}

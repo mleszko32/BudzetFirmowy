@@ -7,90 +7,106 @@
   </head>
   <body>
     <div class="app-container">
-      <!-- Nagłówek klienta -->
-      <header class="client-header">
-        <button class="btn-back">← Wróć do listy</button>
-        <div class="client-title">
-          <h1>Jan Kowalski - Zabudowa kuchni</h1>
-          <span class="badge active">W trakcie</span>
-        </div>
-      </header>
+      
+      <!-- ========================================== -->
+      <!-- WIDOK 1: PANEL GŁÓWNY (LISTA ZLECEŃ)       -->
+      <!-- ========================================== -->
+      <div id="dashboard-view">
+        <header class="client-header">
+          <div class="client-title">
+            <h1>Moje zlecenia</h1>
+          </div>
+        </header>
 
-      <!-- Kafelki z podsumowaniem finansowym -->
-      <section class="summary-grid">
-        <div class="card summary-card">
-          <h3>Wartość zlecenia</h3>
-          <p class="amount" id="total-price">12 000 zł</p>
-        </div>
-        <div class="card summary-card">
-          <h3>Wpłacona zaliczka</h3>
-          <p class="amount text-blue" id="deposit">4 000 zł</p>
-        </div>
-        <div class="card summary-card">
-          <h3>Suma wydatków</h3>
-          <p class="amount text-red" id="total-expenses">3 200 zł</p>
-        </div>
-        <div class="card summary-card highlight">
-          <h3>Pozostało z zaliczki</h3>
-          <p class="amount" id="current-balance">800 zł</p>
-        </div>
-      </section>
-
-      <div class="main-content">
-        <!-- Formularz dodawania wydatku -->
-        <section class="card form-section">
-          <h2>Dodaj wydatek</h2>
-          <form id="expense-form">
+        <!-- Formularz dodawania nowego klienta -->
+        <section class="card form-section" style="margin-bottom: 24px;">
+          <h2>Nowe zlecenie</h2>
+          <form id="new-project-form">
             <div class="form-group">
-              <label for="expense-name">Na co wydano?</label>
-              <input 
-                type="text" 
-                id="expense-name" 
-                placeholder="np. Fronty szuflad, dna, zawiasy Blum" 
-                required
-              >
+              <label for="project-name">Nazwa klienta / projektu</label>
+              <input type="text" id="project-name" placeholder="np. Nowak - Szafa wnękowa" required>
             </div>
-            <div class="form-group">
-              <label for="expense-cost">Kwota brutto (zł)</label>
-              <input 
-                type="number" 
-                id="expense-cost" 
-                step="0.01" 
-                placeholder="0.00" 
-                required
-              >
+            <div class="summary-grid">
+              <div class="form-group">
+                <label for="project-total">Całkowita wartość (zł)</label>
+                <input type="number" id="project-total" step="0.01" required>
+              </div>
+              <div class="form-group">
+                <label for="project-deposit">Pobrana zaliczka (zł)</label>
+                <input type="number" id="project-deposit" step="0.01" required>
+              </div>
             </div>
-            <button type="submit" class="btn btn-primary">Dodaj do kosztów</button>
+            <button type="submit" class="btn btn-primary">Utwórz zlecenie</button>
           </form>
         </section>
 
-        <!-- Lista historii wydatków -->
-        <section class="card list-section">
-          <h2>Historia kosztów</h2>
-          <ul class="expense-list" id="expense-list-container">
-            
-            <li class="expense-item">
-              <div class="expense-info">
-                <strong>Płyty - półki i plecy</strong>
-                <span class="expense-date">08.08.2026</span>
-              </div>
-              <span class="expense-amount text-red">- 1 200,00 zł</span>
-            </li>
-            
-            <li class="expense-item">
-              <div class="expense-info">
-                <strong>Prowadnice i okucia Blum</strong>
-                <span class="expense-date">05.08.2026</span>
-              </div>
-              <span class="expense-amount text-red">- 2 000,00 zł</span>
-            </li>
-
-          </ul>
+        <!-- Kafelki z istniejącymi zleceniami -->
+        <section>
+          <h2>Aktywne projekty</h2>
+          <div class="projects-grid" id="projects-list-container">
+            <!-- Tutaj JavaScript będzie ładował zlecenia z Firebase -->
+            <p>Ładowanie zleceń...</p>
+          </div>
         </section>
       </div>
+
+      <!-- ========================================== -->
+      <!-- WIDOK 2: SZCZEGÓŁY ZLECENIA (STARY KOD)    -->
+      <!-- ========================================== -->
+      <div id="project-details-view" class="hidden">
+        <header class="client-header">
+          <button class="btn-back" id="btn-back-to-dashboard">← Wróć do listy</button>
+          <div class="client-title">
+            <h1 id="details-client-name">Jan Kowalski - Zabudowa kuchni</h1>
+            <span class="badge active">W trakcie</span>
+          </div>
+        </header>
+
+        <section class="summary-grid">
+          <div class="card summary-card">
+            <h3>Wartość zlecenia</h3>
+            <p class="amount" id="total-price">0 zł</p>
+          </div>
+          <div class="card summary-card">
+            <h3>Wpłacona zaliczka</h3>
+            <p class="amount text-blue" id="deposit">0 zł</p>
+          </div>
+          <div class="card summary-card">
+            <h3>Suma wydatków</h3>
+            <p class="amount text-red" id="total-expenses">0 zł</p>
+          </div>
+          <div class="card summary-card highlight">
+            <h3>Pozostało z zaliczki</h3>
+            <p class="amount" id="current-balance">0 zł</p>
+          </div>
+        </section>
+
+        <div class="main-content">
+          <section class="card form-section">
+            <h2>Dodaj wydatek</h2>
+            <form id="expense-form">
+              <div class="form-group">
+                <label for="expense-name">Na co wydano?</label>
+                <input type="text" id="expense-name" placeholder="np. Fronty, dna, zawiasy" required>
+              </div>
+              <div class="form-group">
+                <label for="expense-cost">Kwota brutto (zł)</label>
+                <input type="number" id="expense-cost" step="0.01" placeholder="0.00" required>
+              </div>
+              <button type="submit" class="btn btn-primary">Dodaj do kosztów</button>
+            </form>
+          </section>
+
+          <section class="card list-section">
+            <h2>Historia kosztów</h2>
+            <ul class="expense-list" id="expense-list-container">
+              <!-- JS ładuje tu koszty -->
+            </ul>
+          </section>
+        </div>
+      </div>
+
     </div>
-    
-    <!-- Skrypt ładujący logikę -->
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
