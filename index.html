@@ -6,238 +6,263 @@
     <title>Budżet Zlecenia</title>
   </head>
   <body>
- <div class="app-container">
-  
-  <!-- GŁÓWNE MENU -->
-  <nav class="main-nav card">
-    <button class="nav-btn active" id="tab-projects">Moje zlecenia</button>
-    <button class="nav-btn" id="tab-finances">Finanse firmy</button>
-  </nav>
 
-  <!-- WIDOK 1: PANEL GŁÓWNY -->
-  <div id="dashboard-view">
-    <section class="card form-section" style="margin-bottom: 24px;">
-      <h2>Nowe zlecenie</h2>
-      <form id="new-project-form">
-        <div class="form-group">
-          <label for="project-name">Nazwa klienta / projektu</label>
-          <input type="text" id="project-name" placeholder="np. Nowak - Szafa wnękowa" required>
-        </div>
-        <div class="summary-grid">
-          <div class="form-group">
-            <label for="project-total">Całkowita wartość (zł)</label>
-            <input type="number" id="project-total" step="0.01" required>
+    <!-- ========================================== -->
+    <!-- PANEL LOGOWANIA (DOMYŚLNIE WIDOCZNY)       -->
+    <!-- ========================================== -->
+    <div id="auth-view" style="display: flex; justify-content: center; align-items: center; height: 100vh; background-color: var(--bg-color);">
+      <div class="card" style="width: 100%; max-width: 400px; padding: 32px;">
+        <h2 style="margin-bottom: 24px; text-align: center;">Panel Firmowy</h2>
+        <form id="login-form">
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label for="login-email" style="display:block; margin-bottom:6px; font-weight:bold;">E-mail</label>
+            <input type="email" id="login-email" placeholder="twoj@email.com" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
           </div>
-          <div class="form-group">
-            <label for="project-deposit">Pobrana zaliczka na start (zł)</label>
-            <input type="number" id="project-deposit" step="0.01" required>
+          <div class="form-group" style="margin-bottom: 24px;">
+            <label for="login-password" style="display:block; margin-bottom:6px; font-weight:bold;">Hasło</label>
+            <input type="password" id="login-password" placeholder="••••••••" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
           </div>
-        </div>
-        <button type="submit" class="btn btn-primary">Utwórz zlecenie</button>
-      </form>
-    </section>
-
-    <section>
-      <h2>Aktywne projekty</h2>
-      <div class="projects-grid" id="projects-list-container">
-        <p>Ładowanie zleceń...</p>
-      </div>
-    </section>
-
-    <section style="margin-top: 32px;">
-      <h2>Zakończone / W archiwum</h2>
-      <div class="projects-grid" id="archived-projects-list-container">
-        <p>Brak projektów w archiwum.</p>
-      </div>
-    </section>
-  </div>
-
-  <!-- WIDOK 2: SZCZEGÓŁY ZLECENIA -->
-  <div id="project-details-view" class="hidden">
-    <header class="client-header">
-      <button class="btn-back" id="btn-back-to-dashboard">← Wróć do listy zleceń</button>
-      
-      <div class="client-title" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 12px; flex-wrap: wrap; gap: 12px;">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <h1 id="details-client-name">Ładowanie...</h1>
-          <span class="badge active" id="details-status-badge">W trakcie</span>
-        </div>
-        <div style="display: flex; gap: 8px;">
-          <button id="btn-archive-project" class="btn" style="background: #e2e8f0; color: #2d3748; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Zarchiwizuj</button>
-          <button id="btn-delete-project" class="btn" style="background: var(--red-color); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Usuń</button>
-        </div>
-      </div>
-    </header>
-
-    <section class="summary-grid">
-      <div class="card summary-card">
-        <h3>Wartość zlecenia</h3>
-        <p class="amount" id="total-price">0 zł</p>
-      </div>
-      <div class="card summary-card">
-        <h3>Suma wpłat (zaliczki)</h3>
-        <p class="amount text-blue" id="deposit">0 zł</p>
-      </div>
-      <div class="card summary-card">
-        <h3>Suma wydatków</h3>
-        <p class="amount text-red" id="total-expenses">0 zł</p>
-      </div>
-      <div class="card summary-card highlight">
-        <h3>Zostało z wpłat</h3>
-        <p class="amount" id="current-balance">0 zł</p>
-      </div>
-    </section>
-
-    <div class="main-content">
-      
-      <!-- NOWOŚĆ: Siatka dwóch formularzy obok siebie -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 24px;">
-        
-        <!-- Formularz Wydatków -->
-        <section class="card form-section" style="margin-bottom: 0;">
-          <h2>Dodaj wydatek do zlecenia</h2>
-          <form id="expense-form">
-            <div class="form-group">
-              <label for="expense-name">Na co wydano?</label>
-              <input type="text" id="expense-name" placeholder="np. płyty, fronty, zawiasy" required>
-            </div>
-            <div class="form-group">
-              <label for="expense-cost">Kwota brutto (zł)</label>
-              <input type="number" id="expense-cost" step="0.01" placeholder="0.00" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Dodaj do kosztów</button>
-          </form>
-        </section>
-
-        <!-- Formularz Transzy (NOWY) -->
-        <section class="card form-section" style="margin-bottom: 0;">
-          <h2>Dodaj kolejną wpłatę (transzę)</h2>
-          <form id="tranche-form">
-            <div class="form-group">
-              <label for="tranche-amount">Kwota wpłacona przez klienta (zł)</label>
-              <input type="number" id="tranche-amount" step="0.01" placeholder="np. 2000.00" required>
-            </div>
-            <button type="submit" class="btn btn-primary" style="background-color: #38a169; border-color: #38a169; margin-top: 31px;">Zaksięguj wpłatę</button>
-          </form>
-        </section>
-<!-- NOWOŚĆ: Masowe dodawanie wydatków -->
-      <section class="card form-section" style="margin-bottom: 24px;">
-        <h2>Szybkie dodawanie (wklej listę)</h2>
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
-          Wklej tekst w formacie: <strong>kwota - nazwa</strong> (każdy wydatek w nowej linii). 
-        </p>
-        <form id="bulk-expense-form">
-          <div class="form-group">
-            <textarea id="bulk-expense-text" rows="5" placeholder="np.&#10;1200,50 - fronty szuflad&#10;300 - plecy i dna&#10;150,00 - zawiasy Blum" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius); resize: vertical;" required></textarea>
-          </div>
-          <button type="submit" class="btn btn-primary" style="background-color: #4a5568; border-color: #4a5568;">Wgraj całą listę</button>
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px;">Zaloguj się</button>
+          <p id="auth-error" style="color: var(--red-color); font-size: 14px; text-align: center; margin-top: 16px; display: none;"></p>
         </form>
-      </section>
       </div>
-
-      <section class="card list-section">
-        <h2>Historia kosztów materiałowych</h2>
-        <ul class="expense-list" id="expense-list-container"></ul>
-      </section>
     </div>
-  </div>
 
-  <!-- WIDOK 3: FINANSE FIRMY (Bez zmian) -->
-  <div id="finances-view" class="hidden">
-    <section class="summary-grid" style="margin-bottom: 24px;">
-      <div class="card summary-card highlight" style="grid-column: 1 / -1; text-align: center;">
-        <h3>Aktualny stan kasy w firmie</h3>
-        <p class="amount" id="company-total-balance" style="font-size: 32px;">0.00 zł</p>
-      </div>
-    </section>
-
-    <section class="card" style="margin-bottom: 24px;">
-      <h2>Wydatki w tym miesiącu</h2>
-      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: center; margin-top: 16px;">
-        <div style="width: 100%; max-width: 250px;">
-          <canvas id="monthly-expenses-chart"></canvas>
-        </div>
-        <div id="monthly-summary-list" style="flex: 1; min-width: 200px; font-size: 15px;">
-          <p style="color: var(--text-muted);">Ładowanie statystyk...</p>
-        </div>
-      </div>
-    </section>
-
-    <div class="main-content">
+    <!-- ========================================== -->
+    <!-- WŁAŚCIWA APLIKACIJA (DOMYŚLNIE UKRYTA)     -->
+    <!-- ========================================== -->
+    <div id="main-app-container" class="app-container hidden">
       
-      <!-- Siatka dla dwóch formularzy obok siebie -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 24px;">
-        
-        <section class="card form-section" style="margin-bottom: 0;">
-          <h2>Rejestruj operację</h2>
-          <form id="finance-form">
-            <div class="form-group">
-              <label for="finance-type">Rodzaj operacji</label>
-              <select id="finance-type" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
-                <option value="income">Wpływ (np. wpłata od klienta)</option>
-                <option value="expense">Koszt firmowy (np. paliwo, sprzęt)</option>
-                <option value="withdrawal">Wypłata własna (zysk)</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="finance-category">Kategoria (dla kosztów)</label>
-              <select id="finance-category" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
-                <option value="">-- Nie dotyczy / Brak --</option>
-                <option value="Narzędzia i osprzęt">Narzędzia i osprzęt</option>
-                <option value="Materiały ogólne">Materiały ogólne na warsztat</option>
-                <option value="Paliwo i transport">Paliwo i transport</option>
-                <option value="Opłaty stałe">Opłaty stałe (ZUS, księgowość, raty)</option>
-                <option value="Inne">Inne / Różne</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="finance-desc">Opis</label>
-              <input type="text" id="finance-desc" placeholder="Krótki opis operacji" required>
-            </div>
-            <div class="form-group">
-              <label for="finance-amount">Kwota (zł)</label>
-              <input type="number" id="finance-amount" step="0.01" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Zapisz w kasie</button>
-          </form>
-        </section>
-
-        <!-- NOWOŚĆ: Masowe wklejanie kosztów firmowych -->
-        <section class="card form-section" style="margin-bottom: 0;">
-          <h2>Szybkie dodawanie (wklej listę)</h2>
-          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
-            Wklej tekst (<strong>kwota - opis</strong>). Wszystkie wpisy zostaną dodane jako koszty.
-          </p>
-          <form id="bulk-finance-form">
-            <div class="form-group">
-              <label for="bulk-finance-category">Wspólna kategoria dla listy</label>
-              <select id="bulk-finance-category" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
-                <option value="Inne">Inne / Różne</option>
-                <option value="Narzędzia i osprzęt">Narzędzia i osprzęt</option>
-                <option value="Materiały ogólne">Materiały ogólne na warsztat</option>
-                <option value="Paliwo i transport">Paliwo i transport</option>
-                <option value="Opłaty stałe">Opłaty stałe (ZUS, księgowość, raty)</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <textarea id="bulk-finance-text" rows="6" placeholder="np.&#10;2300 - ZUS 05.2026&#10;100 - Paliwo" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius); resize: vertical;" required></textarea>
-            </div>
-            <button type="submit" class="btn btn-primary" style="background-color: #4a5568; border-color: #4a5568;">Wgraj koszty do kasy</button>
-          </form>
-        </section>
-
+      <!-- Górny pasek z wylogowaniem -->
+      <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
+        <button id="btn-logout" class="btn" style="background: #e2e8f0; color: #2d3748; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold;">Wyloguj się</button>
       </div>
 
-      <section class="card list-section">
-        <h2>Historia operacji</h2>
-        <ul class="expense-list" id="finance-list-container">
-          <p>Ładowanie historii...</p>
-        </ul>
-      </section>
-    </div>
-  </div>
+      <!-- GŁÓWNE MENU -->
+      <nav class="main-nav card">
+        <button class="nav-btn active" id="tab-projects">Moje zlecenia</button>
+        <button class="nav-btn" id="tab-finances">Finanse firmy</button>
+      </nav>
 
-</div>
-<script type="module" src="/src/main.js"></script>
-</body>
+      <!-- WIDOK 1: PANEL GŁÓWNY -->
+      <div id="dashboard-view">
+        <section class="card form-section" style="margin-bottom: 24px;">
+          <h2>Nowe zlecenie</h2>
+          <form id="new-project-form">
+            <div class="form-group">
+              <label for="project-name">Nazwa klienta / projektu</label>
+              <input type="text" id="project-name" placeholder="np. Nowak - Szafa wnękowa" required>
+            </div>
+            <div class="summary-grid">
+              <div class="form-group">
+                <label for="project-total">Całkowita wartość (zł)</label>
+                <input type="number" id="project-total" step="0.01" required>
+              </div>
+              <div class="form-group">
+                <label for="project-deposit">Pobrana zaliczka na start (zł)</label>
+                <input type="number" id="project-deposit" step="0.01" required>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Utwórz zlecenie</button>
+          </form>
+        </section>
+
+        <section>
+          <h2>Aktywne projekty</h2>
+          <div class="projects-grid" id="projects-list-container">
+            <p>Ładowanie zleceń...</p>
+          </div>
+        </section>
+
+        <section style="margin-top: 32px;">
+          <h2>Zakończone / W archiwum</h2>
+          <div class="projects-grid" id="archived-projects-list-container">
+            <p>Brak projektów w archiwum.</p>
+          </div>
+        </section>
+      </div>
+
+      <!-- WIDOK 2: SZCZEGÓŁY ZLECENIA -->
+      <div id="project-details-view" class="hidden">
+        <header class="client-header">
+          <button class="btn-back" id="btn-back-to-dashboard">← Wróć do listy zleceń</button>
+          
+          <div class="client-title" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 12px; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <h1 id="details-client-name">Ładowanie...</h1>
+              <span class="badge active" id="details-status-badge">W trakcie</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button id="btn-archive-project" class="btn" style="background: #e2e8f0; color: #2d3748; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Zarchiwizuj</button>
+              <button id="btn-delete-project" class="btn" style="background: var(--red-color); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Usuń</button>
+            </div>
+          </div>
+        </header>
+
+        <section class="summary-grid">
+          <div class="card summary-card">
+            <h3>Wartość zlecenia</h3>
+            <p class="amount" id="total-price">0 zł</p>
+          </div>
+          <div class="card summary-card">
+            <h3>Suma wpłat (zaliczki)</h3>
+            <p class="amount text-blue" id="deposit">0 zł</p>
+          </div>
+          <div class="card summary-card">
+            <h3>Suma wydatków</h3>
+            <p class="amount text-red" id="total-expenses">0 zł</p>
+          </div>
+          <div class="card summary-card highlight">
+            <h3>Zostało z wpłat</h3>
+            <p class="amount" id="current-balance">0 zł</p>
+          </div>
+        </section>
+
+        <div class="main-content">
+          
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 24px;">
+            <section class="card form-section" style="margin-bottom: 0;">
+              <h2>Dodaj wydatek do zlecenia</h2>
+              <form id="expense-form">
+                <div class="form-group">
+                  <label for="expense-name">Na co wydano?</label>
+                  <input type="text" id="expense-name" placeholder="np. płyty, fronty, zawiasy" required>
+                </div>
+                <div class="form-group">
+                  <label for="expense-cost">Kwota brutto (zł)</label>
+                  <input type="number" id="expense-cost" step="0.01" placeholder="0.00" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Dodaj do kosztów</button>
+              </form>
+            </section>
+
+            <section class="card form-section" style="margin-bottom: 0;">
+              <h2>Dodaj kolejną wpłatę (transzę)</h2>
+              <form id="tranche-form">
+                <div class="form-group">
+                  <label for="tranche-amount">Kwota wpłacona przez klienta (zł)</label>
+                  <input type="number" id="tranche-amount" step="0.01" placeholder="np. 2000.00" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="background-color: #38a169; border-color: #38a169; margin-top: 31px;">Zaksięguj wpłatę</button>
+              </form>
+            </section>
+          </div>
+
+          <!-- Szybkie dodawanie wydatków (masowe) -->
+          <section class="card form-section" style="margin-bottom: 24px;">
+            <h2>Szybkie dodawanie (wklej listę)</h2>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+              Wklej tekst w formacie: <strong>kwota - nazwa</strong> (każdy wydatek w nowej linii).
+            </p>
+            <form id="bulk-expense-form">
+              <div class="form-group">
+                <textarea id="bulk-expense-text" rows="5" placeholder="np.&#10;1200,50 - fronty szuflad&#10;300 - plecy i dna" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius); resize: vertical;" required></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary" style="background-color: #4a5568; border-color: #4a5568;">Wgraj całą listę</button>
+            </form>
+          </section>
+
+          <section class="card list-section">
+            <h2>Historia kosztów materiałowych</h2>
+            <ul class="expense-list" id="expense-list-container"></ul>
+          </section>
+        </div>
+      </div>
+
+      <!-- WIDOK 3: FINANSE FIRMY -->
+      <div id="finances-view" class="hidden">
+        <section class="summary-grid" style="margin-bottom: 24px;">
+          <div class="card summary-card highlight" style="grid-column: 1 / -1; text-align: center;">
+            <h3>Aktualny stan kasy w firmie</h3>
+            <p class="amount" id="company-total-balance" style="font-size: 32px;">0.00 zł</p>
+          </div>
+        </section>
+
+        <section class="card" style="margin-bottom: 24px;">
+          <h2>Wydatki w tym miesiącu</h2>
+          <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: center; margin-top: 16px;">
+            <div style="width: 100%; max-width: 250px;">
+              <canvas id="monthly-expenses-chart"></canvas>
+            </div>
+            <div id="monthly-summary-list" style="flex: 1; min-width: 200px; font-size: 15px;">
+              <p style="color: var(--text-muted);">Ładowanie statystyk...</p>
+            </div>
+          </div>
+        </section>
+
+        <div class="main-content">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 24px;">
+            
+            <section class="card form-section" style="margin-bottom: 0;">
+              <h2>Rejestruj operację</h2>
+              <form id="finance-form">
+                <div class="form-group">
+                  <label for="finance-type">Rodzaj operacji</label>
+                  <select id="finance-type" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
+                    <option value="income">Wpływ (np. wpłata od klienta)</option>
+                    <option value="expense">Koszt firmowy (np. paliwo, sprzęt)</option>
+                    <option value="withdrawal">Wypłata własna (zysk)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="finance-category">Kategoria (dla kosztów)</label>
+                  <select id="finance-category" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
+                    <option value="">-- Nie dotyczy / Brak --</option>
+                    <option value="Narzędzia i osprzęt">Narzędzia i osprzęt</option>
+                    <option value="Materiały ogólne">Materiały ogólne na warsztat</option>
+                    <option value="Paliwo i transport">Paliwo i transport</option>
+                    <option value="Opłaty stałe">Opłaty stałe (ZUS, księgowość, raty)</option>
+                    <option value="Inne">Inne / Różne</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="finance-desc">Opis</label>
+                  <input type="text" id="finance-desc" placeholder="Krótki opis operacji" required>
+                </div>
+                <div class="form-group">
+                  <label for="finance-amount">Kwota (zł)</label>
+                  <input type="number" id="finance-amount" step="0.01" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Zapisz w kasie</button>
+              </form>
+            </section>
+
+            <section class="card form-section" style="margin-bottom: 0;">
+              <h2>Szybkie dodawanie (wklej listę)</h2>
+              <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+                Wklej tekst (<strong>kwota - opis</strong>). Wszystkie wpisy zostaną dodane jako koszty.
+              </p>
+              <form id="bulk-finance-form">
+                <div class="form-group">
+                  <label for="bulk-finance-category">Wspólna kategoria dla listy</label>
+                  <select id="bulk-finance-category" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
+                    <option value="Inne">Inne / Różne</option>
+                    <option value="Narzędzia i osprzęt">Narzędzia i osprzęt</option>
+                    <option value="Materiały ogólne">Materiały ogólne na warsztat</option>
+                    <option value="Paliwo i transport">Paliwo i transport</option>
+                    <option value="Opłaty stałe">Opłaty stałe (ZUS, księgowość, raty)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <textarea id="bulk-finance-text" rows="5" placeholder="np.&#10;2300 - ZUS 05.2026&#10;100 - Paliwo" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius); resize: vertical;" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="background-color: #4a5568; border-color: #4a5568;">Wgraj koszty do kasy</button>
+              </form>
+            </section>
+
+          </div>
+
+          <section class="card list-section">
+            <h2>Historia operacji</h2>
+            <ul class="expense-list" id="finance-list-container">
+              <p>Ładowanie historii...</p>
+            </ul>
+          </section>
+        </div>
+      </div>
+
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
 </html>
