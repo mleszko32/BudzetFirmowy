@@ -4,10 +4,14 @@ import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc
 
 // 1. WKLEJ TUTAJ SWÓJ CONFIG Z FIREBASE!
 const firebaseConfig = {
-  apiKey: "TWOJ_KLUCZ",
-  authDomain: "...",
-  // ... reszta
+  apiKey: "AIzaSyCSE0dGsBBWkzV1Ceuw9GeMJB520UvVHaY",
+  authDomain: "budzetfirmowy-3dd46.firebaseapp.com",
+  projectId: "budzetfirmowy-3dd46",
+  storageBucket: "budzetfirmowy-3dd46.firebasestorage.app",
+  messagingSenderId: "725951455675",
+  appId: "1:725951455675:web:9d53f510f78f008af7e49e"
 };
+
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
