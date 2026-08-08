@@ -6,107 +6,170 @@
     <title>Budżet Zlecenia</title>
   </head>
   <body>
-    <div class="app-container">
-      
-      <!-- ========================================== -->
-      <!-- WIDOK 1: PANEL GŁÓWNY (LISTA ZLECEŃ)       -->
-      <!-- ========================================== -->
-      <div id="dashboard-view">
-        <header class="client-header">
-          <div class="client-title">
-            <h1>Moje zlecenia</h1>
-          </div>
-        </header>
+ <div class="app-container">
+  
+  <!-- GŁÓWNE MENU -->
+  <nav class="main-nav card">
+    <button class="nav-btn active" id="tab-projects">Moje zlecenia</button>
+    <button class="nav-btn" id="tab-finances">Finanse firmy</button>
+  </nav>
 
-        <!-- Formularz dodawania nowego klienta -->
-        <section class="card form-section" style="margin-bottom: 24px;">
-          <h2>Nowe zlecenie</h2>
-          <form id="new-project-form">
-            <div class="form-group">
-              <label for="project-name">Nazwa klienta / projektu</label>
-              <input type="text" id="project-name" placeholder="np. Nowak - Szafa wnękowa" required>
-            </div>
-            <div class="summary-grid">
-              <div class="form-group">
-                <label for="project-total">Całkowita wartość (zł)</label>
-                <input type="number" id="project-total" step="0.01" required>
-              </div>
-              <div class="form-group">
-                <label for="project-deposit">Pobrana zaliczka (zł)</label>
-                <input type="number" id="project-deposit" step="0.01" required>
-              </div>
-            </div>
-            <button type="submit" class="btn btn-primary">Utwórz zlecenie</button>
-          </form>
-        </section>
-
-        <!-- Kafelki z istniejącymi zleceniami -->
-        <section>
-          <h2>Aktywne projekty</h2>
-          <div class="projects-grid" id="projects-list-container">
-            <!-- Tutaj JavaScript będzie ładował zlecenia z Firebase -->
-            <p>Ładowanie zleceń...</p>
+  <!-- WIDOK 1: PANEL GŁÓWNY -->
+  <div id="dashboard-view">
+    <section class="card form-section" style="margin-bottom: 24px;">
+      <h2>Nowe zlecenie</h2>
+      <form id="new-project-form">
+        <div class="form-group">
+          <label for="project-name">Nazwa klienta / projektu</label>
+          <input type="text" id="project-name" placeholder="np. Nowak - Szafa wnękowa" required>
+        </div>
+        <div class="summary-grid">
+          <div class="form-group">
+            <label for="project-total">Całkowita wartość (zł)</label>
+            <input type="number" id="project-total" step="0.01" required>
           </div>
-        </section>
+          <div class="form-group">
+            <label for="project-deposit">Pobrana zaliczka (zł)</label>
+            <input type="number" id="project-deposit" step="0.01" required>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Utwórz zlecenie</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Aktywne projekty</h2>
+      <div class="projects-grid" id="projects-list-container">
+        <p>Ładowanie zleceń...</p>
       </div>
+    </section>
 
-      <!-- ========================================== -->
-      <!-- WIDOK 2: SZCZEGÓŁY ZLECENIA (STARY KOD)    -->
-      <!-- ========================================== -->
-      <div id="project-details-view" class="hidden">
-        <header class="client-header">
-          <button class="btn-back" id="btn-back-to-dashboard">← Wróć do listy</button>
-          <div class="client-title">
-            <h1 id="details-client-name">Jan Kowalski - Zabudowa kuchni</h1>
-            <span class="badge active">W trakcie</span>
-          </div>
-        </header>
+    <!-- NOWOŚĆ: Sekcja Archiwum -->
+    <section style="margin-top: 32px;">
+      <h2>Zakończone / W archiwum</h2>
+      <div class="projects-grid" id="archived-projects-list-container">
+        <p>Brak projektów w archiwum.</p>
+      </div>
+    </section>
+  </div>
 
-        <section class="summary-grid">
-          <div class="card summary-card">
-            <h3>Wartość zlecenia</h3>
-            <p class="amount" id="total-price">0 zł</p>
-          </div>
-          <div class="card summary-card">
-            <h3>Wpłacona zaliczka</h3>
-            <p class="amount text-blue" id="deposit">0 zł</p>
-          </div>
-          <div class="card summary-card">
-            <h3>Suma wydatków</h3>
-            <p class="amount text-red" id="total-expenses">0 zł</p>
-          </div>
-          <div class="card summary-card highlight">
-            <h3>Pozostało z zaliczki</h3>
-            <p class="amount" id="current-balance">0 zł</p>
-          </div>
-        </section>
-
-        <div class="main-content">
-          <section class="card form-section">
-            <h2>Dodaj wydatek</h2>
-            <form id="expense-form">
-              <div class="form-group">
-                <label for="expense-name">Na co wydano?</label>
-                <input type="text" id="expense-name" placeholder="np. Fronty, dna, zawiasy" required>
-              </div>
-              <div class="form-group">
-                <label for="expense-cost">Kwota brutto (zł)</label>
-                <input type="number" id="expense-cost" step="0.01" placeholder="0.00" required>
-              </div>
-              <button type="submit" class="btn btn-primary">Dodaj do kosztów</button>
-            </form>
-          </section>
-
-          <section class="card list-section">
-            <h2>Historia kosztów</h2>
-            <ul class="expense-list" id="expense-list-container">
-              <!-- JS ładuje tu koszty -->
-            </ul>
-          </section>
+  <!-- WIDOK 2: SZCZEGÓŁY ZLECENIA -->
+  <div id="project-details-view" class="hidden">
+    <header class="client-header">
+      <button class="btn-back" id="btn-back-to-dashboard">← Wróć do listy zleceń</button>
+      
+      <!-- NOWOŚĆ: Przebudowany nagłówek z przyciskami zarządzania -->
+      <div class="client-title" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 12px; flex-wrap: wrap; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <h1 id="details-client-name">Ładowanie...</h1>
+          <span class="badge active" id="details-status-badge">W trakcie</span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button id="btn-archive-project" class="btn" style="background: #e2e8f0; color: #2d3748; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Zarchiwizuj</button>
+          <button id="btn-delete-project" class="btn" style="background: var(--red-color); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Usuń</button>
         </div>
       </div>
+    </header>
 
+    <section class="summary-grid">
+      <div class="card summary-card">
+        <h3>Wartość zlecenia</h3>
+        <p class="amount" id="total-price">0 zł</p>
+      </div>
+      <div class="card summary-card">
+        <h3>Wpłacona zaliczka</h3>
+        <p class="amount text-blue" id="deposit">0 zł</p>
+      </div>
+      <div class="card summary-card">
+        <h3>Suma wydatków</h3>
+        <p class="amount text-red" id="total-expenses">0 zł</p>
+      </div>
+      <div class="card summary-card highlight">
+        <h3>Pozostało z zaliczki</h3>
+        <p class="amount" id="current-balance">0 zł</p>
+      </div>
+    </section>
+
+    <div class="main-content">
+      <section class="card form-section">
+        <h2>Dodaj wydatek do zlecenia</h2>
+        <form id="expense-form">
+          <div class="form-group">
+            <label for="expense-name">Na co wydano?</label>
+            <input type="text" id="expense-name" placeholder="np. płyty, fronty szuflad, dna, plecy" required>
+          </div>
+          <div class="form-group">
+            <label for="expense-cost">Kwota brutto (zł)</label>
+            <input type="number" id="expense-cost" step="0.01" placeholder="0.00" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Dodaj do kosztów</button>
+        </form>
+      </section>
+
+      <section class="card list-section">
+        <h2>Historia kosztów</h2>
+        <ul class="expense-list" id="expense-list-container"></ul>
+      </section>
     </div>
-    <script type="module" src="/src/main.js"></script>
+  </div>
+
+  <!-- WIDOK 3: FINANSE FIRMY -->
+  <div id="finances-view" class="hidden">
+    <section class="summary-grid" style="margin-bottom: 24px;">
+      <div class="card summary-card highlight" style="grid-column: 1 / -1; text-align: center;">
+        <h3>Aktualny stan kasy w firmie</h3>
+        <p class="amount" id="company-total-balance" style="font-size: 32px;">0.00 zł</p>
+      </div>
+    </section>
+
+    <div class="main-content">
+      <section class="card form-section">
+        <h2>Rejestruj operację</h2>
+        <form id="finance-form">
+          <div class="form-group">
+            <label for="finance-type">Rodzaj operacji</label>
+            <select id="finance-type" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
+              <option value="income">Wpływ (np. wpłata od klienta)</option>
+              <option value="expense">Koszt firmowy (np. paliwo, sprzęt)</option>
+              <option value="withdrawal">Wypłata własna (zysk)</option>
+            </select>
+          </div>
+          
+          <!-- NOWOŚĆ: Wybór kategorii wydatku -->
+          <div class="form-group">
+            <label for="finance-category">Kategoria (dla kosztów)</label>
+            <select id="finance-category" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
+              <option value="">-- Nie dotyczy / Brak --</option>
+              <option value="Narzędzia i osprzęt">Narzędzia i osprzęt</option>
+              <option value="Materiały ogólne">Materiały ogólne na warsztat</option>
+              <option value="Paliwo i transport">Paliwo i transport</option>
+              <option value="Opłaty stałe">Opłaty stałe (ZUS, księgowość, raty)</option>
+              <option value="Inne">Inne / Różne</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="finance-desc">Opis</label>
+            <input type="text" id="finance-desc" placeholder="Krótki opis operacji" required>
+          </div>
+          <div class="form-group">
+            <label for="finance-amount">Kwota (zł)</label>
+            <input type="number" id="finance-amount" step="0.01" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Zapisz w kasie</button>
+        </form>
+      </section>
+
+      <section class="card list-section">
+        <h2>Historia operacji</h2>
+        <ul class="expense-list" id="finance-list-container">
+          <p>Ładowanie historii...</p>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+</div>
+<script type="module" src="/src/main.js"></script>
   </body>
 </html>
