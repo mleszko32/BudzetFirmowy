@@ -100,9 +100,12 @@
         </header>
 
         <section class="summary-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
-      <div class="card summary-card">
+      <div class="card summary-card" style="position: relative;">
         <h3>Wartość zlecenia</h3>
-        <p class="amount" id="total-price">0 zł</p>
+        <div style="display: flex; align-items: baseline; justify-content: space-between;">
+          <p class="amount" id="total-price" style="margin: 0;">0 zł</p>
+          <button id="btn-edit-total" style="background: none; border: none; color: #3182ce; cursor: pointer; text-decoration: underline; font-size: 13px; font-weight: bold; padding: 0;">Zmień</button>
+        </div>
       </div>
       <div class="card summary-card">
         <h3>Suma wpłat klienta</h3>

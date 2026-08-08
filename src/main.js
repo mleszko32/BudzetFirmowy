@@ -311,17 +311,27 @@ function openProjectDetails(projectId, projectData) {
     if (projectUnsubscribe) projectUnsubscribe();
     projectUnsubscribe = onSnapshot(doc(db, "projects", projectId), (docSnap) => {
         if(docSnap.exists()) {
-            currentProjectDeposit = docSnap.data().deposit;
+            const data = docSnap.data();
+            currentProjectDeposit = data.deposit;
+            currentProjectTotal = data.total; // NOWOŚĆ: Aktualizacja wartości w locie
             
+            if (totalPriceEl) totalPriceEl.textContent = `${currentProjectTotal.toFixed(2)} zł`;
             if (depositEl) depositEl.textContent = `${currentProjectDeposit.toFixed(2)} zł`;
             
             const balance = currentProjectDeposit - currentTotalExpenses;
             if (currentBalanceEl) currentBalanceEl.textContent = `${balance.toFixed(2)} zł`;
 
-            // Aktualizacja kafelka "Klient ma dopłacić"
             const remainingToPayEl = document.getElementById('remaining-to-pay');
             if (remainingToPayEl) {
                 remainingToPayEl.textContent = `${(currentProjectTotal - currentProjectDeposit).toFixed(2)} zł`;
+            }
+
+            // NOWOŚĆ: Przeliczamy od razu szacowany zysk po zmianie całkowitej kwoty
+            const expectedProfitEl = document.getElementById('expected-profit');
+            if (expectedProfitEl) {
+                const expectedProfit = currentProjectTotal - currentTotalExpenses;
+                expectedProfitEl.textContent = `${expectedProfit.toFixed(2)} zł`;
+                expectedProfitEl.style.color = expectedProfit >= 0 ? '#38a169' : 'var(--red-color)';
             }
         }
     });
@@ -738,6 +748,36 @@ if (changePasswordForm) {
                     passwordChangeMessage.style.display = 'block';
                 }
             }
+        }
+    });
+}
+// ==========================================
+// EDYCJA WARTOŚCI ZLECENIA
+// ==========================================
+const btnEditTotal = document.getElementById('btn-edit-total');
+if (btnEditTotal) {
+    btnEditTotal.addEventListener('click', async () => {
+        if (!currentProjectId) return;
+        
+        // Wyświetlamy okienko z prośbą o wpisanie nowej kwoty
+        const newVal = prompt("Podaj nową całkowitą wartość zlecenia (zł):", currentProjectTotal);
+        
+        // Jeśli użytkownik anuluje, przerywamy
+        if (newVal === null) return; 
+        
+        const parsedVal = parseFloat(newVal);
+        if (isNaN(parsedVal) || parsedVal < 0) {
+            alert("Podano nieprawidłową kwotę.");
+            return;
+        }
+
+        try {
+            // Wysyłamy nową wartość do Firebase
+            await updateDoc(doc(db, "projects", currentProjectId), { 
+                total: parsedVal 
+            });
+        } catch (error) { 
+            console.error("Błąd podczas edycji kwoty: ", error); 
         }
     });
 }
