@@ -2,8 +2,7 @@ import './style.css';
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc } from "firebase/firestore";
 // NOWOŚĆ: Importy autentykacji Firebase
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
-import Chart from 'chart.js/auto'; 
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword } from "firebase/auth";import Chart from 'chart.js/auto'; 
 
 // 1. WKLEJ TUTAJ SWÓJ CONFIG Z FIREBASE!
 const firebaseConfig = {
@@ -210,352 +209,269 @@ function initApp() {
         if (!hasArchived) archivedProjectsListContainer.innerHTML = '<p style="color: #718096;">Brak projektów w archiwum.</p>';
     });
 
+} // <-- This closing brace was missing for the initApp function
     // ==========================================
-    // 5. OBSŁUGA FINANSÓW FIRMY
-    // ==========================================
-    const financeForm = document.getElementById('finance-form');
-    const bulkFinanceForm = document.getElementById('bulk-finance-form');
-    const bulkFinanceText = document.getElementById('bulk-finance-text');
-    const bulkFinanceCategory = document.getElementById('bulk-finance-category');
-    const financeListContainer = document.getElementById('finance-list-container');
-    const companyTotalBalanceEl = document.getElementById('company-total-balance');
-    const financesRef = collection(db, "company_finances");
-    const financesQuery = query(financesRef, orderBy("createdAt", "desc"));
-    let expensesChartInstance = null; 
+// 5. OBSŁUGA FINANSÓW FIRMY
+// ==========================================
 
-    financesUnsubscribe = onSnapshot(financesQuery, (snapshot) => {
-        financeListContainer.innerHTML = '';
-        let totalCompanyMoney = 0;
+const financeForm = document.getElementById('finance-form');
+const financeListContainer = document.getElementById('finance-list-container');
+const companyTotalBalanceEl = document.getElementById('company-total-balance');
+const monthlySalaryTotalEl = document.getElementById('monthly-salary-total'); // Nowy licznik pensji
+const financesRef = collection(db, "company_finances");
+const financesQuery = query(financesRef, orderBy("createdAt", "desc"));
+
+let expensesChartInstance = null; 
+let lastFinancesSnapshot = null; // Trzymamy pobrane dane w pamięci
+let currentFinanceFilter = 'all'; // Domyślny filtr
+
+// Pobieranie danych z bazy w czasie rzeczywistym
+onSnapshot(financesQuery, (snapshot) => {
+    lastFinancesSnapshot = snapshot;
+    renderFinancesList(); // Funkcja rysująca listę na podstawie wybranego filtra
+});
+
+// Funkcja odpowiedzialna za rysowanie historii i wykresów
+function renderFinancesList() {
+    if (!lastFinancesSnapshot) return;
+    
+    financeListContainer.innerHTML = '';
+    let totalCompanyMoney = 0;
+    let monthlySalarySum = 0;
+    
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const categoryTotals = {};
+    let hasVisibleItems = false;
+
+    if (lastFinancesSnapshot.empty) {
+        financeListContainer.innerHTML = '<p style="color: #718096;">Brak operacji finansowych.</p>';
+        companyTotalBalanceEl.textContent = '0.00 zł';
+        monthlySalaryTotalEl.textContent = '0.00 zł';
+        document.getElementById('monthly-summary-list').innerHTML = '<p>Brak wydatków w tym miesiącu.</p>';
+        if(expensesChartInstance) expensesChartInstance.destroy();
+        return;
+    }
+
+    lastFinancesSnapshot.forEach((firestoreDoc) => {
+        const data = firestoreDoc.data();
+        const dateObj = data.createdAt ? data.createdAt.toDate() : new Date();
         
-        const currentMonth = new Date().getMonth();
-        const currentYear = new Date().getFullYear();
-        const categoryTotals = {};
-
-        if (snapshot.empty) {
-            financeListContainer.innerHTML = '<p style="color: #718096;">Brak operacji finansowych.</p>';
-            companyTotalBalanceEl.textContent = '0.00 zł';
-            document.getElementById('monthly-summary-list').innerHTML = '<p>Brak wydatków w tym miesiącu.</p>';
-            if(expensesChartInstance) expensesChartInstance.destroy();
-            return;
-        }
-
-        snapshot.forEach((firestoreDoc) => {
-            const data = firestoreDoc.data();
-            const dateObj = data.createdAt ? data.createdAt.toDate() : new Date();
-            
-            if (data.type === 'income') {
-                totalCompanyMoney += data.amount;
-            } else {
-                totalCompanyMoney -= data.amount;
-            }
-
-            if (data.type === 'expense' && dateObj.getMonth() === currentMonth && dateObj.getFullYear() === currentYear) {
-                const cat = data.category && data.category !== "Brak" ? data.category : "Inne / Nieprzypisane";
-                categoryTotals[cat] = (categoryTotals[cat] || 0) + data.amount;
-            }
-
-            let typeLabel = '';
-            let amountColor = '';
-            let sign = '';
-            
-            if (data.type === 'income') {
-                typeLabel = 'Wpływ';
-                amountColor = 'text-blue';
-                sign = '+';
-            } else if (data.type === 'expense') {
-                typeLabel = data.category && data.category !== "Brak" ? `Koszt: ${data.category}` : 'Koszt firmowy';
-                amountColor = 'text-red';
-                sign = '-';
-            } else {
-                typeLabel = 'Wypłata własna';
-                amountColor = 'text-red';
-                sign = '-';
-            }
-
-            const li = document.createElement('li');
-            li.classList.add('expense-item');
-            li.innerHTML = `
-                <div class="expense-info">
-                    <strong>${data.desc}</strong>
-                    <span class="expense-date">${dateObj.toLocaleDateString('pl-PL')} | ${typeLabel}</span>
-                </div>
-                <div class="expense-actions">
-                    <span class="expense-amount ${amountColor}">${sign} ${data.amount.toFixed(2)} zł</span>
-                    <button class="btn-delete finance-delete" data-id="${firestoreDoc.id}" title="Usuń wpis">🗑️</button>
-                </div>
-            `;
-            financeListContainer.appendChild(li);
-        });
-
-        companyTotalBalanceEl.textContent = `${totalCompanyMoney.toFixed(2)} zł`;
-
-        const labels = Object.keys(categoryTotals);
-        const dataValues = Object.values(categoryTotals);
-        const summaryListContainer = document.getElementById('monthly-summary-list');
-        const ctx = document.getElementById('monthly-expenses-chart');
-
-        if (expensesChartInstance) {
-            expensesChartInstance.destroy();
-        }
-
-        if (labels.length > 0) {
-            summaryListContainer.innerHTML = labels.map((label, index) => `
-                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
-                    <span>${label}</span>
-                    <strong>${dataValues[index].toFixed(2)} zł</strong>
-                </div>
-            `).join('');
-
-            expensesChartInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: dataValues,
-                        backgroundColor: ['#e53e3e', '#3182ce', '#dd6b20', '#38a169', '#805ad5', '#718096'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } }
-                }
-            });
+        // Zliczanie globalne kasy
+        if (data.type === 'income') {
+            totalCompanyMoney += data.amount;
         } else {
-            summaryListContainer.innerHTML = '<p>Brak firmowych kosztów w tym miesiącu.</p>';
+            totalCompanyMoney -= data.amount;
         }
+
+        // Zliczanie wypłat (pensji) w obecnym miesiącu
+        if (data.type === 'withdrawal' && dateObj.getMonth() === currentMonth && dateObj.getFullYear() === currentYear) {
+            monthlySalarySum += data.amount;
+        }
+
+        // Zliczanie kategorii do wykresu w obecnym miesiącu
+        if (data.type === 'expense' && dateObj.getMonth() === currentMonth && dateObj.getFullYear() === currentYear) {
+            const cat = data.category && data.category !== "Brak" ? data.category : "Inne / Nieprzypisane";
+            categoryTotals[cat] = (categoryTotals[cat] || 0) + data.amount;
+        }
+
+        // ZASTOSOWANIE FILTRA
+        const isWithdrawal = data.type === 'withdrawal';
+        if (currentFinanceFilter === 'operations' && isWithdrawal) return; // Skips withdrawals
+        if (currentFinanceFilter === 'salary' && !isWithdrawal) return; // Skips non-withdrawals
+        
+        hasVisibleItems = true;
+
+        let typeLabel = '';
+        let amountColor = '';
+        let sign = '';
+        
+        if (data.type === 'income') {
+            typeLabel = 'Wpływ';
+            amountColor = 'text-blue';
+            sign = '+';
+        } else if (data.type === 'expense') {
+            typeLabel = data.category && data.category !== "Brak" ? `Koszt: ${data.category}` : 'Koszt firmowy';
+            amountColor = 'text-red';
+            sign = '-';
+        } else {
+            typeLabel = 'Wypłata własna';
+            amountColor = 'text-purple'; // Wyróżnienie kolorem fioletowym
+            sign = '-';
+        }
+
+        const li = document.createElement('li');
+        li.classList.add('expense-item');
+        // Jeśli to wypłata, możemy lekko zmienić styl, żeby się odróżniała
+        if (data.type === 'withdrawal') {
+            li.style.borderLeft = '4px solid #805ad5';
+        }
+        
+        li.innerHTML = `
+            <div class="expense-info">
+                <strong>${data.desc}</strong>
+                <span class="expense-date">${dateObj.toLocaleDateString('pl-PL')} | ${typeLabel}</span>
+            </div>
+            <div class="expense-actions">
+                <span class="expense-amount ${amountColor}" style="${data.type === 'withdrawal' ? 'color: #805ad5;' : ''}">${sign} ${data.amount.toFixed(2)} zł</span>
+                <button class="btn-delete finance-delete" data-id="${firestoreDoc.id}" title="Usuń wpis">🗑️</button>
+            </div>
+        `;
+        financeListContainer.appendChild(li);
     });
 
-    // Obsługa pojedynczego formularza finansowego
-    financeForm.onsubmit = async (e) => {
-        e.preventDefault();
-        const type = document.getElementById('finance-type').value;
-        const category = document.getElementById('finance-category').value;
-        const desc = document.getElementById('finance-desc').value;
-        const amount = parseFloat(document.getElementById('finance-amount').value);
-        if (!desc || isNaN(amount)) return;
-        try {
-            await addDoc(collection(db, "company_finances"), { type, category: category || "Brak", desc, amount, createdAt: new Date() });
-            financeForm.reset();
-        } catch (error) { console.error(error); }
-    };
-
-    // Masowe dodawanie finansowe
-    bulkFinanceForm.onsubmit = async (e) => {
-        e.preventDefault();
-        const text = bulkFinanceText.value;
-        const category = bulkFinanceCategory.value;
-        const lines = text.split('\n');
-        for (let line of lines) {
-            let cleanLine = line.replace(/\*/g, '').trim();
-            if (!cleanLine) continue; 
-            const parts = cleanLine.split(/[-–—]/);
-            if (parts.length >= 2) {
-                let cost = parseFloat(parts[0].replace(/\s/g, '').replace(',', '.'));
-                let name = parts.slice(1).join('-').trim();
-                if (!isNaN(cost) && name) {
-                    await addDoc(collection(db, "company_finances"), { type: 'expense', category, desc: name, amount: cost, createdAt: new Date() });
-                }
-            }
-        }
-        bulkFinanceForm.reset();
-    };
-
-    financeListContainer.onclick = async (e) => {
-        if (e.target.classList.contains('finance-delete')) {
-            const docId = e.target.getAttribute('data-id');
-            if(confirm("Usunąć operację z kasy?")) await deleteDoc(doc(db, "company_finances", docId));
-        }
-    };
-}
-
-// ==========================================
-// 2. PRZEŁĄCZANIE EKRANÓW I ZLECENIA
-// ==========================================
-
-function openProjectDetails(projectId, projectData) {
-    currentProjectId = projectId;
-    currentProjectStatus = projectData.status || 'active';
-
-    detailsClientName.textContent = projectData.name;
-    totalPriceEl.textContent = `${projectData.total.toFixed(2)} zł`;
-
-    if (currentProjectStatus === 'archived') {
-        detailsStatusBadge.textContent = 'Zakończone';
-        detailsStatusBadge.style.backgroundColor = '#e2e8f0';
-        detailsStatusBadge.style.color = '#4a5568';
-        btnArchiveProject.textContent = 'Przywróć z archiwum';
-    } else {
-        detailsStatusBadge.textContent = 'W trakcie';
-        detailsStatusBadge.style.backgroundColor = '#ebf8ff';
-        detailsStatusBadge.style.color = '#3182ce';
-        btnArchiveProject.textContent = 'Zarchiwizuj';
+    if (!hasVisibleItems) {
+        financeListContainer.innerHTML = '<p style="color: #718096;">Brak operacji dla wybranego filtru.</p>';
     }
 
-    dashboardView.classList.add('hidden');
-    projectDetailsView.classList.remove('hidden');
+    // Aktualizacja kafelków tekstowych
+    companyTotalBalanceEl.textContent = `${totalCompanyMoney.toFixed(2)} zł`;
+    monthlySalaryTotalEl.textContent = `${monthlySalarySum.toFixed(2)} zł`;
 
-    if (projectUnsubscribe) projectUnsubscribe();
-    projectUnsubscribe = onSnapshot(doc(db, "projects", projectId), (docSnap) => {
-        if(docSnap.exists()) {
-            currentProjectDeposit = docSnap.data().deposit;
-            depositEl.textContent = `${currentProjectDeposit.toFixed(2)} zł`;
-            const balance = currentProjectDeposit - currentTotalExpenses;
-            currentBalanceEl.textContent = `${balance.toFixed(2)} zł`;
-        }
-    });
+    // Aktualizacja wykresu
+    const labels = Object.keys(categoryTotals);
+    const dataValues = Object.values(categoryTotals);
+    const summaryListContainer = document.getElementById('monthly-summary-list');
+    const ctx = document.getElementById('monthly-expenses-chart');
 
-    loadExpensesForProject(projectId);
-}
+    if (expensesChartInstance) expensesChartInstance.destroy();
 
-btnBackToDashboard.addEventListener('click', () => {
-    dashboardView.classList.remove('hidden');
-    projectDetailsView.classList.add('hidden');
-    if (expensesUnsubscribe) expensesUnsubscribe();
-    if (projectUnsubscribe) projectUnsubscribe();
-    currentProjectId = null;
-});
+    if (labels.length > 0) {
+        summaryListContainer.innerHTML = labels.map((label, index) => `
+            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                <span>${label}</span>
+                <strong>${dataValues[index].toFixed(2)} zł</strong>
+            </div>
+        `).join('');
 
-btnArchiveProject.addEventListener('click', async () => {
-    if(!currentProjectId) return;
-    const newStatus = currentProjectStatus === 'archived' ? 'active' : 'archived';
-    await updateDoc(doc(db, "projects", currentProjectId), { status: newStatus });
-    btnBackToDashboard.click(); 
-});
-
-btnDeleteProject.addEventListener('click', async () => {
-    if(!currentProjectId) return;
-    if(confirm("Usunąć zlecenie?")) {
-        await deleteDoc(doc(db, "projects", currentProjectId));
-        btnBackToDashboard.click(); 
-    }
-});
-
-newProjectForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const name = document.getElementById('project-name').value;
-    const total = parseFloat(document.getElementById('project-total').value);
-    const deposit = parseFloat(document.getElementById('project-deposit').value);
-    if (!name || isNaN(total) || isNaN(deposit)) return;
-
-    await addDoc(collection(db, "projects"), { name, total, deposit, status: 'active', createdAt: new Date() });
-    if (deposit > 0) {
-        await addDoc(collection(db, "company_finances"), { type: 'income', desc: `Zaliczka na start (${name})`, amount: deposit, createdAt: new Date() });
-    }
-    newProjectForm.reset();
-});
-
-function loadExpensesForProject(projectId) {
-    const expensesRef = collection(db, "projects", projectId, "expenses");
-    const expensesQuery = query(expensesRef, orderBy("createdAt", "desc"));
-
-    expensesUnsubscribe = onSnapshot(expensesQuery, (snapshot) => {
-        expenseListContainer.innerHTML = ''; 
-        let totalSum = 0;
-
-        snapshot.forEach((firestoreDoc) => {
-            const data = firestoreDoc.data();
-            totalSum += data.cost;
-            const dateObj = data.createdAt ? data.createdAt.toDate() : new Date();
-
-            const li = document.createElement('li');
-            li.classList.add('expense-item');
-            li.innerHTML = `
-                <div class="expense-info">
-                    <strong>${data.name}</strong>
-                    <span class="expense-date">${dateObj.toLocaleDateString('pl-PL')}</span>
-                </div>
-                <div class="expense-actions">
-                    <span class="expense-amount text-red">- ${data.cost.toFixed(2)} zł</span>
-                    <button class="btn-delete" data-id="${firestoreDoc.id}" title="Usuń wydatek">🗑️</button>
-                </div>
-            `;
-            expenseListContainer.appendChild(li);
+        expensesChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: dataValues,
+                    backgroundColor: ['#e53e3e', '#3182ce', '#dd6b20', '#38a169', '#805ad5', '#718096'],
+                    borderWidth: 0
+                }]
+            },
+            options: { responsive: true, plugins: { legend: { display: false } } }
         });
-
-        currentTotalExpenses = totalSum;
-        totalExpensesEl.textContent = `${totalSum.toFixed(2)} zł`;
-        const balance = currentProjectDeposit - totalSum;
-        currentBalanceEl.textContent = `${balance.toFixed(2)} zł`;
-    });
+    } else {
+        summaryListContainer.innerHTML = '<p>Brak firmowych kosztów w tym miesiącu.</p>';
+    }
 }
 
-expenseForm.addEventListener('submit', async (e) => {
-    e.preventDefault(); 
-    if (!currentProjectId) return; 
-    const name = expenseNameInput.value;
-    const cost = parseFloat(expenseCostInput.value);
-    if (!name || isNaN(cost)) return;
-
-    await addDoc(collection(db, "projects", currentProjectId, "expenses"), { name, cost, createdAt: new Date() });
-    const projectName = detailsClientName.textContent; 
-    await addDoc(collection(db, "company_finances"), { type: 'expense', desc: `Koszt zlecenia (${projectName}): ${name}`, amount: cost, createdAt: new Date() });
-    expenseForm.reset();
+// Obsługa przycisków filtrowania
+const filterButtons = document.querySelectorAll('.filter-btn');
+filterButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        // Zdejmij klasę 'active' i domyślne kolory ze wszystkich przycisków
+        filterButtons.forEach(b => {
+            b.classList.remove('active');
+            b.style.background = 'var(--bg-color)';
+            b.style.color = 'inherit';
+        });
+        
+        // Nałóż styl aktywnego na kliknięty
+        const clickedBtn = e.currentTarget;
+        clickedBtn.classList.add('active');
+        clickedBtn.style.background = 'var(--primary-color)';
+        clickedBtn.style.color = 'white';
+        
+        // Zaktualizuj zmienną i przerysuj listę
+        currentFinanceFilter = clickedBtn.getAttribute('data-filter');
+        renderFinancesList();
+    });
 });
 
-expenseListContainer.addEventListener('click', async (e) => {
-    if (e.target.classList.contains('btn-delete') && currentProjectId) {
-        const expenseId = e.target.getAttribute('data-id');
-        if(confirm("Usunąć wydatek?")) await deleteDoc(doc(db, "projects", currentProjectId, "expenses", expenseId));
-    }
-});
-
-trancheForm.addEventListener('submit', async (e) => {
+financeForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!currentProjectId) return;
-    const amount = parseFloat(trancheAmountInput.value);
-    if (isNaN(amount) || amount <= 0) return;
+    
+    const type = document.getElementById('finance-type').value;
+    const category = document.getElementById('finance-category').value;
+    const desc = document.getElementById('finance-desc').value;
+    const amount = parseFloat(document.getElementById('finance-amount').value);
 
-    const newDeposit = currentProjectDeposit + amount;
-    await updateDoc(doc(db, "projects", currentProjectId), { deposit: newDeposit });
-    const projectName = detailsClientName.textContent;
-    await addDoc(collection(db, "company_finances"), { type: 'income', desc: `Kolejna transza (${projectName})`, amount, createdAt: new Date() });
-    trancheForm.reset();
+    if (!desc || isNaN(amount)) return;
+
+    try {
+        await addDoc(collection(db, "company_finances"), {
+            type: type,
+            category: category || "Brak",
+            desc: desc,
+            amount: amount,
+            createdAt: new Date()
+        });
+        financeForm.reset();
+    } catch (error) { console.error(error); }
 });
 
-bulkExpenseForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!currentProjectId) return;
-    const lines = bulkExpenseText.value.split('\n');
-    for (let line of lines) {
-        let cleanLine = line.replace(/\*/g, '').trim();
-        if (!cleanLine) continue; 
-        const parts = cleanLine.split(/[-–—]/);
-        if (parts.length >= 2) {
-            let cost = parseFloat(parts[0].replace(/\s/g, '').replace(',', '.'));
-            let name = parts.slice(1).join('-').trim();
-            if (!isNaN(cost) && name) {
-                await addDoc(collection(db, "projects", currentProjectId, "expenses"), { name, cost, createdAt: new Date() });
-                const projectName = detailsClientName.textContent; 
-                await addDoc(collection(db, "company_finances"), { type: 'expense', desc: `Koszt zlecenia (${projectName}): ${name}`, amount: cost, createdAt: new Date() });
-            }
+financeListContainer.addEventListener('click', async (e) => {
+    if (e.target.classList.contains('finance-delete')) {
+        const docId = e.target.getAttribute('data-id');
+        if(confirm("Czy na pewno chcesz usunąć tę operację z kasy firmy?")) {
+            await deleteDoc(doc(db, "company_finances", docId));
         }
     }
-    bulkExpenseForm.reset();
 });
-
 // ==========================================
-// 4. ZAKŁADKI (NAWIGACJA)
+// 6. OBSŁUGA ZMIANY HASŁA
 // ==========================================
-const tabProjects = document.getElementById('tab-projects');
-const tabFinances = document.getElementById('tab-finances');
-const financesView = document.getElementById('finances-view');
+const changePasswordForm = document.getElementById('change-password-form');
+const newPasswordInput = document.getElementById('new-password');
+const confirmNewPasswordInput = document.getElementById('confirm-new-password');
+const passwordChangeMessage = document.getElementById('password-change-message');
 
-tabFinances.addEventListener('click', () => {
-    tabFinances.classList.add('active');
-    tabProjects.classList.remove('active');
-    dashboardView.classList.add('hidden');
-    projectDetailsView.classList.add('hidden');
-    financesView.classList.remove('hidden');
-});
+changePasswordForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
 
-tabProjects.addEventListener('click', () => {
-    tabProjects.classList.add('active');
-    tabFinances.classList.remove('active');
-    financesView.classList.add('hidden');
-    dashboardView.classList.remove('hidden');
-    projectDetailsView.classList.add('hidden');
-    if (expensesUnsubscribe) expensesUnsubscribe();
-    if (projectUnsubscribe) projectUnsubscribe();
-    currentProjectId = null;
+    const newPassword = newPasswordInput.value;
+    const confirmPassword = confirmNewPasswordInput.value;
+
+    // Resetowanie komunikatów z poprzednich prób
+    passwordChangeMessage.style.display = 'none';
+    passwordChangeMessage.textContent = '';
+    
+    // Walidacja: czy hasła są takie same?
+    if (newPassword !== confirmPassword) {
+        passwordChangeMessage.textContent = "Podane hasła nie są identyczne!";
+        passwordChangeMessage.style.color = '#e53e3e'; // Czerwony kolor błędu
+        passwordChangeMessage.style.display = 'block';
+        return;
+    }
+
+    // Walidacja: Firebase wymaga hasła o długości min. 6 znaków
+    if (newPassword.length < 6) {
+        passwordChangeMessage.textContent = "Hasło musi mieć co najmniej 6 znaków.";
+        passwordChangeMessage.style.color = '#e53e3e';
+        passwordChangeMessage.style.display = 'block';
+        return;
+    }
+
+    const user = auth.currentUser;
+
+    if (user) {
+        try {
+            // Wysłanie żądania zmiany hasła do Firebase
+            await updatePassword(user, newPassword);
+            
+            passwordChangeMessage.textContent = "Hasło zostało pomyślnie zmienione!";
+            passwordChangeMessage.style.color = '#38a169'; // Zielony kolor sukcesu
+            passwordChangeMessage.style.display = 'block';
+            changePasswordForm.reset();
+            
+        } catch (error) {
+            console.error("Błąd zmiany hasła:", error);
+            
+            // Firebase dla bezpieczeństwa może wymagać tzw. "świeżego logowania" przy zmianie hasła
+            if (error.code === 'auth/requires-recent-login') {
+                passwordChangeMessage.textContent = "Dla bezpieczeństwa wyloguj się, zaloguj ponownie i spróbuj zmienić hasło raz jeszcze.";
+            } else {
+                passwordChangeMessage.textContent = "Wystąpił błąd. Spróbuj ponownie.";
+            }
+            
+            passwordChangeMessage.style.color = '#e53e3e';
+            passwordChangeMessage.style.display = 'block';
+        }
+    }
 });
