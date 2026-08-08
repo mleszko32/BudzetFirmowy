@@ -1,0 +1,190 @@
+/* Zmienne globalne */
+:root {
+  --bg-color: #f4f7f6;
+  --card-bg: #ffffff;
+  --text-main: #2d3748;
+  --text-muted: #718096;
+  --primary-color: #3182ce;
+  --primary-hover: #2b6cb0;
+  --red-color: #e53e3e;
+  --green-color: #38a169;
+  --border-color: #e2e8f0;
+  --radius: 8px;
+}
+
+/* Reset podstawowy */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  padding: 20px;
+}
+
+.app-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* Karta (wspólny kontener) */
+.card {
+  background-color: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* Nagłówek */
+.client-header {
+  margin-bottom: 24px;
+}
+
+.btn-back {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.client-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.badge {
+  background-color: #ebf8ff;
+  color: #3182ce;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Siatka podsumowań */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.summary-card h3 {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: normal;
+  margin-bottom: 8px;
+}
+
+.summary-card .amount {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.summary-card.highlight {
+  background-color: var(--text-main);
+  color: white;
+}
+
+.summary-card.highlight h3 {
+  color: #cbd5e0;
+}
+
+/* Kolory tekstu */
+.text-blue { color: var(--primary-color); }
+.text-red { color: var(--red-color); }
+
+/* Główny układ - formularz i lista */
+.main-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Formularz */
+.form-section h2, .list-section h2 {
+  font-size: 18px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  font-size: 15px;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 12px;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+}
+
+/* Lista wydatków */
+.expense-list {
+  list-style: none;
+}
+
+.expense-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.expense-item:last-child {
+  border-bottom: none;
+}
+
+.expense-info strong {
+  display: block;
+  font-size: 15px;
+}
+
+.expense-date {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.expense-amount {
+  font-weight: bold;
+}

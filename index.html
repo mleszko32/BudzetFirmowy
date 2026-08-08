@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Budżet Zlecenia</title>
+  </head>
+  <body>
+    <div class="app-container">
+      <!-- Nagłówek klienta -->
+      <header class="client-header">
+        <button class="btn-back">← Wróć do listy</button>
+        <div class="client-title">
+          <h1>Jan Kowalski - Zabudowa kuchni</h1>
+          <span class="badge active">W trakcie</span>
+        </div>
+      </header>
+
+      <!-- Kafelki z podsumowaniem finansowym -->
+      <section class="summary-grid">
+        <div class="card summary-card">
+          <h3>Wartość zlecenia</h3>
+          <p class="amount" id="total-price">12 000 zł</p>
+        </div>
+        <div class="card summary-card">
+          <h3>Wpłacona zaliczka</h3>
+          <p class="amount text-blue" id="deposit">4 000 zł</p>
+        </div>
+        <div class="card summary-card">
+          <h3>Suma wydatków</h3>
+          <p class="amount text-red" id="total-expenses">3 200 zł</p>
+        </div>
+        <div class="card summary-card highlight">
+          <h3>Pozostało z zaliczki</h3>
+          <p class="amount" id="current-balance">800 zł</p>
+        </div>
+      </section>
+
+      <div class="main-content">
+        <!-- Formularz dodawania wydatku -->
+        <section class="card form-section">
+          <h2>Dodaj wydatek</h2>
+          <form id="expense-form">
+            <div class="form-group">
+              <label for="expense-name">Na co wydano?</label>
+              <input 
+                type="text" 
+                id="expense-name" 
+                placeholder="np. Fronty szuflad, dna, zawiasy Blum" 
+                required
+              >
+            </div>
+            <div class="form-group">
+              <label for="expense-cost">Kwota brutto (zł)</label>
+              <input 
+                type="number" 
+                id="expense-cost" 
+                step="0.01" 
+                placeholder="0.00" 
+                required
+              >
+            </div>
+            <button type="submit" class="btn btn-primary">Dodaj do kosztów</button>
+          </form>
+        </section>
+
+        <!-- Lista historii wydatków -->
+        <section class="card list-section">
+          <h2>Historia kosztów</h2>
+          <ul class="expense-list" id="expense-list-container">
+            
+            <li class="expense-item">
+              <div class="expense-info">
+                <strong>Płyty - półki i plecy</strong>
+                <span class="expense-date">08.08.2026</span>
+              </div>
+              <span class="expense-amount text-red">- 1 200,00 zł</span>
+            </li>
+            
+            <li class="expense-item">
+              <div class="expense-info">
+                <strong>Prowadnice i okucia Blum</strong>
+                <span class="expense-date">05.08.2026</span>
+              </div>
+              <span class="expense-amount text-red">- 2 000,00 zł</span>
+            </li>
+
+          </ul>
+        </section>
+      </div>
+    </div>
+    
+    <!-- Skrypt ładujący logikę -->
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
