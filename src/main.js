@@ -31,6 +31,7 @@ const btnLogout = document.getElementById('btn-logout');
 // --- ZMIENNE SYSTEMOWE ---
 let currentProjectId = null;
 let currentProjectDeposit = 0;
+let currentProjectTotal = 0; // TĘ ZMIENNĄ MUSIMY DODAĆ!
 let currentTotalExpenses = 0; 
 let currentProjectStatus = 'active'; 
 let expensesUnsubscribe = null; 
