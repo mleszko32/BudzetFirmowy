@@ -29,7 +29,7 @@
             <input type="number" id="project-total" step="0.01" required>
           </div>
           <div class="form-group">
-            <label for="project-deposit">Pobrana zaliczka (zł)</label>
+            <label for="project-deposit">Pobrana zaliczka na start (zł)</label>
             <input type="number" id="project-deposit" step="0.01" required>
           </div>
         </div>
@@ -44,7 +44,6 @@
       </div>
     </section>
 
-    <!-- NOWOŚĆ: Sekcja Archiwum -->
     <section style="margin-top: 32px;">
       <h2>Zakończone / W archiwum</h2>
       <div class="projects-grid" id="archived-projects-list-container">
@@ -58,7 +57,6 @@
     <header class="client-header">
       <button class="btn-back" id="btn-back-to-dashboard">← Wróć do listy zleceń</button>
       
-      <!-- NOWOŚĆ: Przebudowany nagłówek z przyciskami zarządzania -->
       <div class="client-title" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 12px; flex-wrap: wrap; gap: 12px;">
         <div style="display: flex; align-items: center; gap: 12px;">
           <h1 id="details-client-name">Ładowanie...</h1>
@@ -77,7 +75,7 @@
         <p class="amount" id="total-price">0 zł</p>
       </div>
       <div class="card summary-card">
-        <h3>Wpłacona zaliczka</h3>
+        <h3>Suma wpłat (zaliczki)</h3>
         <p class="amount text-blue" id="deposit">0 zł</p>
       </div>
       <div class="card summary-card">
@@ -85,35 +83,54 @@
         <p class="amount text-red" id="total-expenses">0 zł</p>
       </div>
       <div class="card summary-card highlight">
-        <h3>Pozostało z zaliczki</h3>
+        <h3>Zostało z wpłat</h3>
         <p class="amount" id="current-balance">0 zł</p>
       </div>
     </section>
 
     <div class="main-content">
-      <section class="card form-section">
-        <h2>Dodaj wydatek do zlecenia</h2>
-        <form id="expense-form">
-          <div class="form-group">
-            <label for="expense-name">Na co wydano?</label>
-            <input type="text" id="expense-name" placeholder="np. płyty, fronty szuflad, dna, plecy" required>
-          </div>
-          <div class="form-group">
-            <label for="expense-cost">Kwota brutto (zł)</label>
-            <input type="number" id="expense-cost" step="0.01" placeholder="0.00" required>
-          </div>
-          <button type="submit" class="btn btn-primary">Dodaj do kosztów</button>
-        </form>
-      </section>
+      
+      <!-- NOWOŚĆ: Siatka dwóch formularzy obok siebie -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 24px;">
+        
+        <!-- Formularz Wydatków -->
+        <section class="card form-section" style="margin-bottom: 0;">
+          <h2>Dodaj wydatek do zlecenia</h2>
+          <form id="expense-form">
+            <div class="form-group">
+              <label for="expense-name">Na co wydano?</label>
+              <input type="text" id="expense-name" placeholder="np. płyty, fronty, zawiasy" required>
+            </div>
+            <div class="form-group">
+              <label for="expense-cost">Kwota brutto (zł)</label>
+              <input type="number" id="expense-cost" step="0.01" placeholder="0.00" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Dodaj do kosztów</button>
+          </form>
+        </section>
+
+        <!-- Formularz Transzy (NOWY) -->
+        <section class="card form-section" style="margin-bottom: 0;">
+          <h2>Dodaj kolejną wpłatę (transzę)</h2>
+          <form id="tranche-form">
+            <div class="form-group">
+              <label for="tranche-amount">Kwota wpłacona przez klienta (zł)</label>
+              <input type="number" id="tranche-amount" step="0.01" placeholder="np. 2000.00" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="background-color: #38a169; border-color: #38a169; margin-top: 31px;">Zaksięguj wpłatę</button>
+          </form>
+        </section>
+
+      </div>
 
       <section class="card list-section">
-        <h2>Historia kosztów</h2>
+        <h2>Historia kosztów materiałowych</h2>
         <ul class="expense-list" id="expense-list-container"></ul>
       </section>
     </div>
   </div>
 
-  <!-- WIDOK 3: FINANSE FIRMY -->
+  <!-- WIDOK 3: FINANSE FIRMY (Bez zmian) -->
   <div id="finances-view" class="hidden">
     <section class="summary-grid" style="margin-bottom: 24px;">
       <div class="card summary-card highlight" style="grid-column: 1 / -1; text-align: center;">
@@ -122,8 +139,6 @@
       </div>
     </section>
 
-
-    <!-- NOWOŚĆ: Sekcja podsumowania miesiąca i wykresu -->
     <section class="card" style="margin-bottom: 24px;">
       <h2>Wydatki w tym miesiącu</h2>
       <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: center; margin-top: 16px;">
@@ -135,6 +150,7 @@
         </div>
       </div>
     </section>
+
     <div class="main-content">
       <section class="card form-section">
         <h2>Rejestruj operację</h2>
@@ -147,8 +163,6 @@
               <option value="withdrawal">Wypłata własna (zysk)</option>
             </select>
           </div>
-          
-          <!-- NOWOŚĆ: Wybór kategorii wydatku -->
           <div class="form-group">
             <label for="finance-category">Kategoria (dla kosztów)</label>
             <select id="finance-category" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
@@ -160,7 +174,6 @@
               <option value="Inne">Inne / Różne</option>
             </select>
           </div>
-
           <div class="form-group">
             <label for="finance-desc">Opis</label>
             <input type="text" id="finance-desc" placeholder="Krótki opis operacji" required>

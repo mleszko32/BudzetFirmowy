@@ -1,8 +1,7 @@
 import './style.css';
-// NOWOŚĆ: dodano import updateDoc
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc } from "firebase/firestore";
-import Chart from 'chart.js/auto';
+import Chart from 'chart.js/auto'; 
 
 // 1. WKLEJ TUTAJ SWÓJ CONFIG Z FIREBASE!
 const firebaseConfig = {
@@ -18,10 +17,13 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// Zmienne systemowe
 let currentProjectId = null;
 let currentProjectDeposit = 0;
-let currentProjectStatus = 'active'; // Przechowuje status otwartego projektu
+let currentTotalExpenses = 0; // Pomaga liczyć saldo na żywo
+let currentProjectStatus = 'active'; 
 let expensesUnsubscribe = null; 
+let projectUnsubscribe = null; // Słuchacz samego projektu (dla transz)
 
 // --- ELEMENTY HTML ---
 const dashboardView = document.getElementById('dashboard-view');
@@ -29,23 +31,28 @@ const projectDetailsView = document.getElementById('project-details-view');
 
 const newProjectForm = document.getElementById('new-project-form');
 const projectsListContainer = document.getElementById('projects-list-container');
-const archivedProjectsListContainer = document.getElementById('archived-projects-list-container'); // NOWE
+const archivedProjectsListContainer = document.getElementById('archived-projects-list-container'); 
 const btnBackToDashboard = document.getElementById('btn-back-to-dashboard');
 
 const detailsClientName = document.getElementById('details-client-name');
-const detailsStatusBadge = document.getElementById('details-status-badge'); // NOWE
-const btnArchiveProject = document.getElementById('btn-archive-project'); // NOWE
-const btnDeleteProject = document.getElementById('btn-delete-project'); // NOWE
+const detailsStatusBadge = document.getElementById('details-status-badge'); 
+const btnArchiveProject = document.getElementById('btn-archive-project'); 
+const btnDeleteProject = document.getElementById('btn-delete-project'); 
 
 const totalPriceEl = document.getElementById('total-price');
 const depositEl = document.getElementById('deposit');
 const totalExpensesEl = document.getElementById('total-expenses');
 const currentBalanceEl = document.getElementById('current-balance');
 
+// Formularze zlecenia
 const expenseForm = document.getElementById('expense-form');
 const expenseNameInput = document.getElementById('expense-name');
 const expenseCostInput = document.getElementById('expense-cost');
 const expenseListContainer = document.getElementById('expense-list-container');
+
+// NOWE: Formularz transzy
+const trancheForm = document.getElementById('tranche-form');
+const trancheAmountInput = document.getElementById('tranche-amount');
 
 
 // ==========================================
@@ -54,15 +61,12 @@ const expenseListContainer = document.getElementById('expense-list-container');
 
 const projectsRef = collection(db, "projects");
 const projectsQuery = query(projectsRef, orderBy("createdAt", "desc"));
-
-// Tablica do trzymania "słuchaczy" wydatków, żeby nie obciążać przeglądarki
 let dashboardExpenseListeners = [];
 
 onSnapshot(projectsQuery, (snapshot) => {
     projectsListContainer.innerHTML = ''; 
     archivedProjectsListContainer.innerHTML = '';
 
-    // Czyścimy stare nasłuchiwania przy każdym odświeżeniu listy
     dashboardExpenseListeners.forEach(unsub => unsub());
     dashboardExpenseListeners = [];
 
@@ -82,14 +86,13 @@ onSnapshot(projectsQuery, (snapshot) => {
             card.style.backgroundColor = '#f8fafc';
         }
         
-        // Przebudowany środek kafelka z miejscem na nowe podsumowanie finansowe
         card.innerHTML = `
             <h3>${project.name}</h3>
             <p style="margin-bottom: 12px; color: #4a5568;">Wartość zlecenia: <strong>${project.total.toFixed(2)} zł</strong></p>
             
             <div style="background: var(--bg-color); padding: 12px; border-radius: 8px; font-size: 14px;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                    <span>Pobrana zaliczka:</span>
+                    <span>Suma wpłat:</span>
                     <strong class="text-blue">${project.deposit.toFixed(2)} zł</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
@@ -97,7 +100,7 @@ onSnapshot(projectsQuery, (snapshot) => {
                     <strong class="text-red" id="card-exp-${projectId}">ładowanie...</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-color); font-size: 15px;">
-                    <span>Zostało gotówki:</span>
+                    <span>Zostało z wpłat:</span>
                     <strong id="card-bal-${projectId}">...</strong>
                 </div>
             </div>
@@ -113,7 +116,6 @@ onSnapshot(projectsQuery, (snapshot) => {
             hasActive = true;
         }
 
-        // Pobieranie wydatków w tle dla tego konkretnego kafelka
         const expRef = collection(db, "projects", projectId, "expenses");
         const unsub = onSnapshot(expRef, (expSnap) => {
             let sum = 0;
@@ -128,7 +130,6 @@ onSnapshot(projectsQuery, (snapshot) => {
                 const balance = project.deposit - sum;
                 balEl.textContent = `${balance.toFixed(2)} zł`;
                 
-                // Automatyczne kolorowanie salda zaliczki (zielony/czerwony)
                 if (balance >= 0) {
                     balEl.style.color = '#38a169'; 
                 } else {
@@ -165,7 +166,7 @@ newProjectForm.addEventListener('submit', async (e) => {
         if (deposit > 0) {
             await addDoc(collection(db, "company_finances"), {
                 type: 'income',
-                desc: `Zaliczka (Zlecenie: ${name})`,
+                desc: `Zaliczka na start (Zlecenie: ${name})`,
                 amount: deposit,
                 createdAt: new Date()
             });
@@ -177,20 +178,18 @@ newProjectForm.addEventListener('submit', async (e) => {
     }
 });
 
+
 // ==========================================
 // 2. PRZEŁĄCZANIE EKRANÓW I AKCJE NA PROJEKCIE
 // ==========================================
 
 function openProjectDetails(projectId, projectData) {
     currentProjectId = projectId;
-    currentProjectDeposit = projectData.deposit;
     currentProjectStatus = projectData.status || 'active';
 
     detailsClientName.textContent = projectData.name;
     totalPriceEl.textContent = `${projectData.total.toFixed(2)} zł`;
-    depositEl.textContent = `${projectData.deposit.toFixed(2)} zł`;
 
-    // Aktualizacja wyglądu nagłówka na podstawie statusu
     if (currentProjectStatus === 'archived') {
         detailsStatusBadge.textContent = 'Zakończone';
         detailsStatusBadge.style.backgroundColor = '#e2e8f0';
@@ -206,53 +205,53 @@ function openProjectDetails(projectId, projectData) {
     dashboardView.classList.add('hidden');
     projectDetailsView.classList.remove('hidden');
 
+    // NOWOŚĆ: Nasłuchiwanie na samego klienta (żeby transza odświeżała się na żywo)
+    if (projectUnsubscribe) projectUnsubscribe();
+    projectUnsubscribe = onSnapshot(doc(db, "projects", projectId), (docSnap) => {
+        if(docSnap.exists()) {
+            currentProjectDeposit = docSnap.data().deposit;
+            depositEl.textContent = `${currentProjectDeposit.toFixed(2)} zł`;
+            
+            // Przeliczanie salda
+            const balance = currentProjectDeposit - currentTotalExpenses;
+            currentBalanceEl.textContent = `${balance.toFixed(2)} zł`;
+        }
+    });
+
     loadExpensesForProject(projectId);
 }
 
 btnBackToDashboard.addEventListener('click', () => {
     dashboardView.classList.remove('hidden');
     projectDetailsView.classList.add('hidden');
-    if (expensesUnsubscribe) {
-        expensesUnsubscribe();
-    }
+    if (expensesUnsubscribe) expensesUnsubscribe();
+    if (projectUnsubscribe) projectUnsubscribe();
     currentProjectId = null;
 });
 
-// ARCHIWIZACJA
+// ARCHIWIZACJA I USUWANIE (Bez zmian)
 btnArchiveProject.addEventListener('click', async () => {
     if(!currentProjectId) return;
-    
-    // Odwracamy status
     const newStatus = currentProjectStatus === 'archived' ? 'active' : 'archived';
-    
     try {
-        await updateDoc(doc(db, "projects", currentProjectId), {
-            status: newStatus
-        });
-        // Po zmianie wracamy do listy
+        await updateDoc(doc(db, "projects", currentProjectId), { status: newStatus });
         btnBackToDashboard.click(); 
-    } catch(error) {
-        console.error("Błąd archiwizacji:", error);
-    }
+    } catch(error) { console.error(error); }
 });
 
-// USUWANIE
 btnDeleteProject.addEventListener('click', async () => {
     if(!currentProjectId) return;
-    
     if(confirm("Czy na pewno chcesz usunąć to zlecenie? Zniknie ono całkowicie z listy!")) {
         try {
             await deleteDoc(doc(db, "projects", currentProjectId));
             btnBackToDashboard.click(); 
-        } catch(error) {
-            console.error("Błąd usuwania:", error);
-        }
+        } catch(error) { console.error(error); }
     }
 });
 
 
 // ==========================================
-// 3. OBSŁUGA WYDATKÓW (DLA WYBRANEGO ZLECENIA)
+// 3. OBSŁUGA WYDATKÓW I TRANSZ W ZLECENIU
 // ==========================================
 
 function loadExpensesForProject(projectId) {
@@ -283,6 +282,7 @@ function loadExpensesForProject(projectId) {
             expenseListContainer.appendChild(li);
         });
 
+        currentTotalExpenses = totalSum; // Zapisujemy do globalnej zmiennej
         totalExpensesEl.textContent = `${totalSum.toFixed(2)} zł`;
         const balance = currentProjectDeposit - totalSum;
         currentBalanceEl.textContent = `${balance.toFixed(2)} zł`;
@@ -314,9 +314,7 @@ expenseForm.addEventListener('submit', async (e) => {
         });
 
         expenseForm.reset();
-    } catch (error) {
-        console.error("Błąd: ", error);
-    }
+    } catch (error) { console.error(error); }
 });
 
 expenseListContainer.addEventListener('click', async (e) => {
@@ -325,6 +323,37 @@ expenseListContainer.addEventListener('click', async (e) => {
         if(confirm("Czy usunąć wydatek?")) {
             await deleteDoc(doc(db, "projects", currentProjectId, "expenses", expenseId));
         }
+    }
+});
+
+// NOWOŚĆ: Logika dodawania transzy
+trancheForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentProjectId) return;
+
+    const amount = parseFloat(trancheAmountInput.value);
+    if (isNaN(amount) || amount <= 0) return;
+
+    try {
+        // 1. Zwiększamy pulę zaliczek w zleceniu
+        const newDeposit = currentProjectDeposit + amount;
+        await updateDoc(doc(db, "projects", currentProjectId), {
+            deposit: newDeposit
+        });
+
+        // 2. Dodajemy wpływ do ogólnej kasy
+        const projectName = detailsClientName.textContent;
+        await addDoc(collection(db, "company_finances"), {
+            type: 'income',
+            desc: `Kolejna transza (Zlecenie: ${projectName})`,
+            amount: amount,
+            createdAt: new Date()
+        });
+
+        trancheForm.reset();
+    } catch (error) {
+        console.error("Błąd podczas dodawania transzy: ", error);
+        alert("Wystąpił błąd!");
     }
 });
 
@@ -354,9 +383,8 @@ tabProjects.addEventListener('click', () => {
     dashboardView.classList.remove('hidden');
     projectDetailsView.classList.add('hidden');
     
-    if (expensesUnsubscribe) {
-        expensesUnsubscribe();
-    }
+    if (expensesUnsubscribe) expensesUnsubscribe();
+    if (projectUnsubscribe) projectUnsubscribe();
     currentProjectId = null;
 });
 
@@ -368,17 +396,14 @@ tabProjects.addEventListener('click', () => {
 const financeForm = document.getElementById('finance-form');
 const financeListContainer = document.getElementById('finance-list-container');
 const companyTotalBalanceEl = document.getElementById('company-total-balance');
-
 const financesRef = collection(db, "company_finances");
 const financesQuery = query(financesRef, orderBy("createdAt", "desc"));
-
-let expensesChartInstance = null; // Zmienna trzymająca nasz wykres
+let expensesChartInstance = null; 
 
 onSnapshot(financesQuery, (snapshot) => {
     financeListContainer.innerHTML = '';
     let totalCompanyMoney = 0;
     
-    // Obiekty do zliczania statystyk miesięcznych
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     const categoryTotals = {};
@@ -395,14 +420,12 @@ onSnapshot(financesQuery, (snapshot) => {
         const data = firestoreDoc.data();
         const dateObj = data.createdAt ? data.createdAt.toDate() : new Date();
         
-        // Zliczanie ogólnego salda
         if (data.type === 'income') {
             totalCompanyMoney += data.amount;
         } else {
             totalCompanyMoney -= data.amount;
         }
 
-        // Zliczanie statystyk WYDATKÓW tylko dla obecnego miesiąca i roku
         if (data.type === 'expense' && dateObj.getMonth() === currentMonth && dateObj.getFullYear() === currentYear) {
             const cat = data.category && data.category !== "Brak" ? data.category : "Inne / Nieprzypisane";
             categoryTotals[cat] = (categoryTotals[cat] || 0) + data.amount;
@@ -441,24 +464,18 @@ onSnapshot(financesQuery, (snapshot) => {
         financeListContainer.appendChild(li);
     });
 
-    // Aktualizacja głównego licznika kasy
     companyTotalBalanceEl.textContent = `${totalCompanyMoney.toFixed(2)} zł`;
 
-    // ----------------------------------------------------
-    // GENEROWANIE PODSUMOWANIA I WYKRESU KOŁOWEGO
-    // ----------------------------------------------------
     const labels = Object.keys(categoryTotals);
     const dataValues = Object.values(categoryTotals);
     const summaryListContainer = document.getElementById('monthly-summary-list');
     const ctx = document.getElementById('monthly-expenses-chart');
 
-    // Niszczymy stary wykres przed narysowaniem nowego (aby uniknąć nakładania się)
     if (expensesChartInstance) {
         expensesChartInstance.destroy();
     }
 
     if (labels.length > 0) {
-        // Generujemy listę tekstową obok wykresu
         summaryListContainer.innerHTML = labels.map((label, index) => `
             <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
                 <span>${label}</span>
@@ -466,24 +483,19 @@ onSnapshot(financesQuery, (snapshot) => {
             </div>
         `).join('');
 
-        // Rysujemy nowy wykres kołowy (Doughnut)
         expensesChartInstance = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: labels,
                 datasets: [{
                     data: dataValues,
-                    backgroundColor: [
-                        '#e53e3e', '#3182ce', '#dd6b20', '#38a169', '#805ad5', '#718096'
-                    ],
+                    backgroundColor: ['#e53e3e', '#3182ce', '#dd6b20', '#38a169', '#805ad5', '#718096'],
                     borderWidth: 0
                 }]
             },
             options: {
                 responsive: true,
-                plugins: {
-                    legend: { display: false } // Ukrywamy domyślną legendę, bo mamy własną listę
-                }
+                plugins: { legend: { display: false } }
             }
         });
     } else {
@@ -495,7 +507,7 @@ financeForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
     const type = document.getElementById('finance-type').value;
-    const category = document.getElementById('finance-category').value; // Pobieramy kategorię
+    const category = document.getElementById('finance-category').value;
     const desc = document.getElementById('finance-desc').value;
     const amount = parseFloat(document.getElementById('finance-amount').value);
 
@@ -504,16 +516,15 @@ financeForm.addEventListener('submit', async (e) => {
     try {
         await addDoc(collection(db, "company_finances"), {
             type: type,
-            category: category || "Brak", // Zapisujemy do bazy
+            category: category || "Brak",
             desc: desc,
             amount: amount,
             createdAt: new Date()
         });
         financeForm.reset();
-    } catch (error) {
-        console.error("Błąd zapisu finansów:", error);
-    }
+    } catch (error) { console.error(error); }
 });
+
 financeListContainer.addEventListener('click', async (e) => {
     if (e.target.classList.contains('finance-delete')) {
         const docId = e.target.getAttribute('data-id');
