@@ -122,6 +122,19 @@
       </div>
     </section>
 
+
+    <!-- NOWOŚĆ: Sekcja podsumowania miesiąca i wykresu -->
+    <section class="card" style="margin-bottom: 24px;">
+      <h2>Wydatki w tym miesiącu</h2>
+      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: center; margin-top: 16px;">
+        <div style="width: 100%; max-width: 250px;">
+          <canvas id="monthly-expenses-chart"></canvas>
+        </div>
+        <div id="monthly-summary-list" style="flex: 1; min-width: 200px; font-size: 15px;">
+          <p style="color: var(--text-muted);">Ładowanie statystyk...</p>
+        </div>
+      </div>
+    </section>
     <div class="main-content">
       <section class="card form-section">
         <h2>Rejestruj operację</h2>

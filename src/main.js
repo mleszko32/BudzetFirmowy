@@ -2,6 +2,7 @@ import './style.css';
 // NOWOŚĆ: dodano import updateDoc
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import Chart from 'chart.js/auto';
 
 // 1. WKLEJ TUTAJ SWÓJ CONFIG Z FIREBASE!
 const firebaseConfig = {
@@ -371,13 +372,22 @@ const companyTotalBalanceEl = document.getElementById('company-total-balance');
 const financesRef = collection(db, "company_finances");
 const financesQuery = query(financesRef, orderBy("createdAt", "desc"));
 
+let expensesChartInstance = null; // Zmienna trzymająca nasz wykres
+
 onSnapshot(financesQuery, (snapshot) => {
     financeListContainer.innerHTML = '';
     let totalCompanyMoney = 0;
+    
+    // Obiekty do zliczania statystyk miesięcznych
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const categoryTotals = {};
 
     if (snapshot.empty) {
         financeListContainer.innerHTML = '<p style="color: #718096;">Brak operacji finansowych.</p>';
         companyTotalBalanceEl.textContent = '0.00 zł';
+        document.getElementById('monthly-summary-list').innerHTML = '<p>Brak wydatków w tym miesiącu.</p>';
+        if(expensesChartInstance) expensesChartInstance.destroy();
         return;
     }
 
@@ -385,10 +395,17 @@ onSnapshot(financesQuery, (snapshot) => {
         const data = firestoreDoc.data();
         const dateObj = data.createdAt ? data.createdAt.toDate() : new Date();
         
+        // Zliczanie ogólnego salda
         if (data.type === 'income') {
             totalCompanyMoney += data.amount;
         } else {
             totalCompanyMoney -= data.amount;
+        }
+
+        // Zliczanie statystyk WYDATKÓW tylko dla obecnego miesiąca i roku
+        if (data.type === 'expense' && dateObj.getMonth() === currentMonth && dateObj.getFullYear() === currentYear) {
+            const cat = data.category && data.category !== "Brak" ? data.category : "Inne / Nieprzypisane";
+            categoryTotals[cat] = (categoryTotals[cat] || 0) + data.amount;
         }
 
         let typeLabel = '';
@@ -400,7 +417,6 @@ onSnapshot(financesQuery, (snapshot) => {
             amountColor = 'text-blue';
             sign = '+';
         } else if (data.type === 'expense') {
-            // Pokazuje kategorię, jeśli została wybrana
             typeLabel = data.category && data.category !== "Brak" ? `Koszt: ${data.category}` : 'Koszt firmowy';
             amountColor = 'text-red';
             sign = '-';
@@ -425,7 +441,54 @@ onSnapshot(financesQuery, (snapshot) => {
         financeListContainer.appendChild(li);
     });
 
+    // Aktualizacja głównego licznika kasy
     companyTotalBalanceEl.textContent = `${totalCompanyMoney.toFixed(2)} zł`;
+
+    // ----------------------------------------------------
+    // GENEROWANIE PODSUMOWANIA I WYKRESU KOŁOWEGO
+    // ----------------------------------------------------
+    const labels = Object.keys(categoryTotals);
+    const dataValues = Object.values(categoryTotals);
+    const summaryListContainer = document.getElementById('monthly-summary-list');
+    const ctx = document.getElementById('monthly-expenses-chart');
+
+    // Niszczymy stary wykres przed narysowaniem nowego (aby uniknąć nakładania się)
+    if (expensesChartInstance) {
+        expensesChartInstance.destroy();
+    }
+
+    if (labels.length > 0) {
+        // Generujemy listę tekstową obok wykresu
+        summaryListContainer.innerHTML = labels.map((label, index) => `
+            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                <span>${label}</span>
+                <strong>${dataValues[index].toFixed(2)} zł</strong>
+            </div>
+        `).join('');
+
+        // Rysujemy nowy wykres kołowy (Doughnut)
+        expensesChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: dataValues,
+                    backgroundColor: [
+                        '#e53e3e', '#3182ce', '#dd6b20', '#38a169', '#805ad5', '#718096'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false } // Ukrywamy domyślną legendę, bo mamy własną listę
+                }
+            }
+        });
+    } else {
+        summaryListContainer.innerHTML = '<p>Brak firmowych kosztów w tym miesiącu.</p>';
+    }
 });
 
 financeForm.addEventListener('submit', async (e) => {
