@@ -179,11 +179,20 @@ function initApp() {
 
         let hasActive = false;
         let hasArchived = false;
+        let totalReceivables = 0; // NOWOŚĆ: Zmienna zbierająca pieniądze do odbioru z całego kraju :)
 
         snapshot.forEach((firestoreDoc) => {
             const project = firestoreDoc.data();
             const projectId = firestoreDoc.id;
             const status = project.status || 'active'; 
+
+            // NOWOŚĆ: Obliczamy ile zostało do zapłaty dla aktywnych zleceń
+            if (status !== 'archived') {
+                const remaining = project.total - (project.deposit || 0);
+                if (remaining > 0) {
+                    totalReceivables += remaining;
+                }
+            }
 
             const card = document.createElement('div');
             card.classList.add('card', 'project-card');
@@ -198,17 +207,21 @@ function initApp() {
                 <p style="margin-bottom: 12px; color: #4a5568;">Wartość zlecenia: <strong>${project.total.toFixed(2)} zł</strong></p>
                 
                 <div style="background: var(--bg-color); padding: 12px; border-radius: 8px; font-size: 14px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                        <span>Suma wpłat:</span>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span>Wpłacono:</span>
                         <strong class="text-blue">${project.deposit.toFixed(2)} zł</strong>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span>Do odbioru:</span>
+                        <strong style="color: #ed8936;">${(project.total - project.deposit).toFixed(2)} zł</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
                         <span>Wydano na materiały:</span>
                         <strong class="text-red" id="card-exp-${projectId}">ładowanie...</strong>
                     </div>
                     <div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-color); font-size: 15px;">
-                        <span>Zostało z wpłat:</span>
-                        <strong id="card-bal-${projectId}">...</strong>
+                        <span>Szacowany zysk:</span>
+                        <strong id="card-profit-${projectId}">...</strong>
                     </div>
                 </div>
             `;
@@ -229,13 +242,13 @@ function initApp() {
                 expSnap.forEach(e => sum += e.data().cost);
                 
                 const expEl = document.getElementById(`card-exp-${projectId}`);
-                const balEl = document.getElementById(`card-bal-${projectId}`);
+                const profitEl = document.getElementById(`card-profit-${projectId}`); 
                 
-                if (expEl && balEl) {
+                if (expEl && profitEl) {
                     expEl.textContent = `${sum.toFixed(2)} zł`;
-                    const balance = project.deposit - sum;
-                    balEl.textContent = `${balance.toFixed(2)} zł`;
-                    balEl.style.color = balance >= 0 ? '#38a169' : 'var(--red-color)'; 
+                    const profit = project.total - sum;
+                    profitEl.textContent = `${profit.toFixed(2)} zł`;
+                    profitEl.style.color = profit >= 0 ? '#38a169' : 'var(--red-color)'; 
                 }
             });
             
@@ -244,6 +257,12 @@ function initApp() {
 
         if (!hasActive && projectsListContainer) projectsListContainer.innerHTML = '<p style="color: #718096;">Brak aktywnych zleceń.</p>';
         if (!hasArchived && archivedProjectsListContainer) archivedProjectsListContainer.innerHTML = '<p style="color: #718096;">Brak projektów w archiwum.</p>';
+        
+        // NOWOŚĆ: Aktualizacja kafelka z globalną kwotą do odbioru w zakładce Finanse
+        const receivablesEl = document.getElementById('company-receivables');
+        if (receivablesEl) {
+            receivablesEl.textContent = `${totalReceivables.toFixed(2)} zł`;
+        }
     });
 
     // --- FINANSE FIRMY ---
@@ -262,11 +281,11 @@ function initApp() {
         renderFinancesList(); 
     });
 }
-
 // --- OTWIERANIE PROJEKTU ---
 function openProjectDetails(projectId, projectData) {
     currentProjectId = projectId;
     currentProjectStatus = projectData.status || 'active';
+    currentProjectTotal = projectData.total; // Zapisujemy wartość zlecenia
 
     if (detailsClientName) detailsClientName.textContent = projectData.name;
     if (totalPriceEl) totalPriceEl.textContent = `${projectData.total.toFixed(2)} zł`;
@@ -292,9 +311,17 @@ function openProjectDetails(projectId, projectData) {
     projectUnsubscribe = onSnapshot(doc(db, "projects", projectId), (docSnap) => {
         if(docSnap.exists()) {
             currentProjectDeposit = docSnap.data().deposit;
+            
             if (depositEl) depositEl.textContent = `${currentProjectDeposit.toFixed(2)} zł`;
+            
             const balance = currentProjectDeposit - currentTotalExpenses;
             if (currentBalanceEl) currentBalanceEl.textContent = `${balance.toFixed(2)} zł`;
+
+            // Aktualizacja kafelka "Klient ma dopłacić"
+            const remainingToPayEl = document.getElementById('remaining-to-pay');
+            if (remainingToPayEl) {
+                remainingToPayEl.textContent = `${(currentProjectTotal - currentProjectDeposit).toFixed(2)} zł`;
+            }
         }
     });
 
@@ -365,8 +392,17 @@ function loadExpensesForProject(projectId) {
 
         currentTotalExpenses = totalSum; 
         if (totalExpensesEl) totalExpensesEl.textContent = `${totalSum.toFixed(2)} zł`;
+        
         const balance = currentProjectDeposit - totalSum;
         if (currentBalanceEl) currentBalanceEl.textContent = `${balance.toFixed(2)} zł`;
+
+        // Aktualizacja kafelka "Szacowany zysk na czysto"
+        const expectedProfitEl = document.getElementById('expected-profit');
+        if (expectedProfitEl) {
+            const expectedProfit = currentProjectTotal - totalSum;
+            expectedProfitEl.textContent = `${expectedProfit.toFixed(2)} zł`;
+            expectedProfitEl.style.color = expectedProfit >= 0 ? '#38a169' : 'var(--red-color)';
+        }
     });
 }
 
