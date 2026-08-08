@@ -120,7 +120,19 @@
             <button type="submit" class="btn btn-primary" style="background-color: #38a169; border-color: #38a169; margin-top: 31px;">Zaksięguj wpłatę</button>
           </form>
         </section>
-
+<!-- NOWOŚĆ: Masowe dodawanie wydatków -->
+      <section class="card form-section" style="margin-bottom: 24px;">
+        <h2>Szybkie dodawanie (wklej listę)</h2>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+          Wklej tekst w formacie: <strong>kwota - nazwa</strong> (każdy wydatek w nowej linii). 
+        </p>
+        <form id="bulk-expense-form">
+          <div class="form-group">
+            <textarea id="bulk-expense-text" rows="5" placeholder="np.&#10;1200,50 - fronty szuflad&#10;300 - plecy i dna&#10;150,00 - zawiasy Blum" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius); resize: vertical;" required></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary" style="background-color: #4a5568; border-color: #4a5568;">Wgraj całą listę</button>
+        </form>
+      </section>
       </div>
 
       <section class="card list-section">
@@ -152,39 +164,69 @@
     </section>
 
     <div class="main-content">
-      <section class="card form-section">
-        <h2>Rejestruj operację</h2>
-        <form id="finance-form">
-          <div class="form-group">
-            <label for="finance-type">Rodzaj operacji</label>
-            <select id="finance-type" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
-              <option value="income">Wpływ (np. wpłata od klienta)</option>
-              <option value="expense">Koszt firmowy (np. paliwo, sprzęt)</option>
-              <option value="withdrawal">Wypłata własna (zysk)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="finance-category">Kategoria (dla kosztów)</label>
-            <select id="finance-category" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
-              <option value="">-- Nie dotyczy / Brak --</option>
-              <option value="Narzędzia i osprzęt">Narzędzia i osprzęt</option>
-              <option value="Materiały ogólne">Materiały ogólne na warsztat</option>
-              <option value="Paliwo i transport">Paliwo i transport</option>
-              <option value="Opłaty stałe">Opłaty stałe (ZUS, księgowość, raty)</option>
-              <option value="Inne">Inne / Różne</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="finance-desc">Opis</label>
-            <input type="text" id="finance-desc" placeholder="Krótki opis operacji" required>
-          </div>
-          <div class="form-group">
-            <label for="finance-amount">Kwota (zł)</label>
-            <input type="number" id="finance-amount" step="0.01" required>
-          </div>
-          <button type="submit" class="btn btn-primary">Zapisz w kasie</button>
-        </form>
-      </section>
+      
+      <!-- Siatka dla dwóch formularzy obok siebie -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 24px;">
+        
+        <section class="card form-section" style="margin-bottom: 0;">
+          <h2>Rejestruj operację</h2>
+          <form id="finance-form">
+            <div class="form-group">
+              <label for="finance-type">Rodzaj operacji</label>
+              <select id="finance-type" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
+                <option value="income">Wpływ (np. wpłata od klienta)</option>
+                <option value="expense">Koszt firmowy (np. paliwo, sprzęt)</option>
+                <option value="withdrawal">Wypłata własna (zysk)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="finance-category">Kategoria (dla kosztów)</label>
+              <select id="finance-category" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
+                <option value="">-- Nie dotyczy / Brak --</option>
+                <option value="Narzędzia i osprzęt">Narzędzia i osprzęt</option>
+                <option value="Materiały ogólne">Materiały ogólne na warsztat</option>
+                <option value="Paliwo i transport">Paliwo i transport</option>
+                <option value="Opłaty stałe">Opłaty stałe (ZUS, księgowość, raty)</option>
+                <option value="Inne">Inne / Różne</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="finance-desc">Opis</label>
+              <input type="text" id="finance-desc" placeholder="Krótki opis operacji" required>
+            </div>
+            <div class="form-group">
+              <label for="finance-amount">Kwota (zł)</label>
+              <input type="number" id="finance-amount" step="0.01" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Zapisz w kasie</button>
+          </form>
+        </section>
+
+        <!-- NOWOŚĆ: Masowe wklejanie kosztów firmowych -->
+        <section class="card form-section" style="margin-bottom: 0;">
+          <h2>Szybkie dodawanie (wklej listę)</h2>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+            Wklej tekst (<strong>kwota - opis</strong>). Wszystkie wpisy zostaną dodane jako koszty.
+          </p>
+          <form id="bulk-finance-form">
+            <div class="form-group">
+              <label for="bulk-finance-category">Wspólna kategoria dla listy</label>
+              <select id="bulk-finance-category" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
+                <option value="Inne">Inne / Różne</option>
+                <option value="Narzędzia i osprzęt">Narzędzia i osprzęt</option>
+                <option value="Materiały ogólne">Materiały ogólne na warsztat</option>
+                <option value="Paliwo i transport">Paliwo i transport</option>
+                <option value="Opłaty stałe">Opłaty stałe (ZUS, księgowość, raty)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <textarea id="bulk-finance-text" rows="6" placeholder="np.&#10;2300 - ZUS 05.2026&#10;100 - Paliwo" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius); resize: vertical;" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" style="background-color: #4a5568; border-color: #4a5568;">Wgraj koszty do kasy</button>
+          </form>
+        </section>
+
+      </div>
 
       <section class="card list-section">
         <h2>Historia operacji</h2>
@@ -197,5 +239,5 @@
 
 </div>
 <script type="module" src="/src/main.js"></script>
-  </body>
+</body>
 </html>

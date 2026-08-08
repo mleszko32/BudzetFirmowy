@@ -356,6 +356,74 @@ trancheForm.addEventListener('submit', async (e) => {
         alert("Wystąpił błąd!");
     }
 });
+// NOWOŚĆ: Logika masowego dodawania wydatków
+const bulkExpenseForm = document.getElementById('bulk-expense-form');
+const bulkExpenseText = document.getElementById('bulk-expense-text');
+
+if (bulkExpenseForm) {
+    bulkExpenseForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!currentProjectId) return;
+
+        const text = bulkExpenseText.value;
+        const lines = text.split('\n'); // Dzielimy wklejony tekst na osobne linijki
+
+        // Zmieniamy przycisk na czas ładowania
+        const submitBtn = bulkExpenseForm.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn.textContent;
+        submitBtn.textContent = 'Przetwarzanie...';
+        submitBtn.disabled = true;
+
+        try {
+            // Pętla przechodzi przez każdą linijkę
+            for (let line of lines) {
+                // Usuwamy ewentualne gwiazdki z Markdowna i puste znaki
+                let cleanLine = line.replace(/\*/g, '').trim();
+                if (!cleanLine) continue; // Pomijamy puste linie
+
+                // Szukamy separatora (myślnika, półpauzy lub pauzy)
+                const parts = cleanLine.split(/[-–—]/);
+                
+                if (parts.length >= 2) {
+                    // Część pierwsza to kwota - usuwamy z niej spacje i zamieniamy przecinek na kropkę
+                    let costStr = parts[0].replace(/\s/g, '').replace(',', '.');
+                    let cost = parseFloat(costStr);
+                    
+                    // Część druga to nazwa wydatku (łączymy resztę, jeśli w nazwie też był myślnik)
+                    let name = parts.slice(1).join('-').trim();
+
+                    if (!isNaN(cost) && name) {
+                        // 1. Zapisujemy wydatek w danym zleceniu
+                        await addDoc(collection(db, "projects", currentProjectId, "expenses"), {
+                            name: name,
+                            cost: cost,
+                            createdAt: new Date()
+                        });
+
+                        // 2. Odciągamy wydatek z głównej kasy firmy
+                        const projectName = detailsClientName.textContent; 
+                        await addDoc(collection(db, "company_finances"), {
+                            type: 'expense',
+                            desc: `Koszt zlecenia (${projectName}): ${name}`,
+                            amount: cost,
+                            createdAt: new Date()
+                        });
+                    }
+                }
+            }
+            
+            // Po udanej pętli czyścimy formularz
+            bulkExpenseForm.reset();
+        } catch (error) {
+            console.error("Błąd podczas masowego dodawania: ", error);
+            alert("Wystąpił błąd podczas przetwarzania listy!");
+        } finally {
+            // Przywracamy przycisk
+            submitBtn.textContent = originalBtnText;
+            submitBtn.disabled = false;
+        }
+    });
+}
 
 
 // ==========================================
@@ -533,3 +601,55 @@ financeListContainer.addEventListener('click', async (e) => {
         }
     }
 });
+// NOWOŚĆ: Logika masowego dodawania kosztów firmowych
+const bulkFinanceForm = document.getElementById('bulk-finance-form');
+const bulkFinanceText = document.getElementById('bulk-finance-text');
+const bulkFinanceCategory = document.getElementById('bulk-finance-category');
+
+if (bulkFinanceForm) {
+    bulkFinanceForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const text = bulkFinanceText.value;
+        const category = bulkFinanceCategory.value;
+        const lines = text.split('\n');
+
+        const submitBtn = bulkFinanceForm.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn.textContent;
+        submitBtn.textContent = 'Przetwarzanie...';
+        submitBtn.disabled = true;
+
+        try {
+            for (let line of lines) {
+                let cleanLine = line.replace(/\*/g, '').trim();
+                if (!cleanLine) continue; 
+
+                const parts = cleanLine.split(/[-–—]/);
+                
+                if (parts.length >= 2) {
+                    let costStr = parts[0].replace(/\s/g, '').replace(',', '.');
+                    let cost = parseFloat(costStr);
+                    let name = parts.slice(1).join('-').trim();
+
+                    if (!isNaN(cost) && name) {
+                        await addDoc(collection(db, "company_finances"), {
+                            type: 'expense',
+                            category: category,
+                            desc: name,
+                            amount: cost,
+                            createdAt: new Date() // data dodania
+                        });
+                    }
+                }
+            }
+            
+            bulkFinanceForm.reset();
+        } catch (error) {
+            console.error("Błąd podczas masowego dodawania do finansów: ", error);
+            alert("Wystąpił błąd podczas przetwarzania listy!");
+        } finally {
+            submitBtn.textContent = originalBtnText;
+            submitBtn.disabled = false;
+        }
+    });
+}
