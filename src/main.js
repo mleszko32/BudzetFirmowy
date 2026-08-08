@@ -210,28 +210,242 @@ function initApp() {
     });
 
 } // <-- This closing brace was missing for the initApp function
-    // ==========================================
+   // ==========================================
+// 2. PRZEŁĄCZANIE EKRANÓW I AKCJE NA PROJEKCIE
+// ==========================================
+
+function openProjectDetails(projectId, projectData) {
+    currentProjectId = projectId;
+    currentProjectStatus = projectData.status || 'active';
+
+    detailsClientName.textContent = projectData.name;
+    totalPriceEl.textContent = `${projectData.total.toFixed(2)} zł`;
+
+    if (currentProjectStatus === 'archived') {
+        detailsStatusBadge.textContent = 'Zakończone';
+        detailsStatusBadge.style.backgroundColor = '#e2e8f0';
+        detailsStatusBadge.style.color = '#4a5568';
+        btnArchiveProject.textContent = 'Przywróć z archiwum';
+    } else {
+        detailsStatusBadge.textContent = 'W trakcie';
+        detailsStatusBadge.style.backgroundColor = '#ebf8ff';
+        detailsStatusBadge.style.color = '#3182ce';
+        btnArchiveProject.textContent = 'Zarchiwizuj';
+    }
+
+    dashboardView.classList.add('hidden');
+    projectDetailsView.classList.remove('hidden');
+
+    if (projectUnsubscribe) projectUnsubscribe();
+    projectUnsubscribe = onSnapshot(doc(db, "projects", projectId), (docSnap) => {
+        if(docSnap.exists()) {
+            currentProjectDeposit = docSnap.data().deposit;
+            depositEl.textContent = `${currentProjectDeposit.toFixed(2)} zł`;
+            
+            const balance = currentProjectDeposit - currentTotalExpenses;
+            currentBalanceEl.textContent = `${balance.toFixed(2)} zł`;
+        }
+    });
+
+    loadExpensesForProject(projectId);
+}
+
+btnBackToDashboard.addEventListener('click', () => {
+    dashboardView.classList.remove('hidden');
+    projectDetailsView.classList.add('hidden');
+    if (expensesUnsubscribe) expensesUnsubscribe();
+    if (projectUnsubscribe) projectUnsubscribe();
+    currentProjectId = null;
+});
+
+btnArchiveProject.addEventListener('click', async () => {
+    if(!currentProjectId) return;
+    const newStatus = currentProjectStatus === 'archived' ? 'active' : 'archived';
+    try {
+        await updateDoc(doc(db, "projects", currentProjectId), { status: newStatus });
+        btnBackToDashboard.click(); 
+    } catch(error) { console.error(error); }
+});
+
+btnDeleteProject.addEventListener('click', async () => {
+    if(!currentProjectId) return;
+    if(confirm("Czy na pewno chcesz usunąć to zlecenie? Zniknie ono całkowicie z listy!")) {
+        try {
+            await deleteDoc(doc(db, "projects", currentProjectId));
+            btnBackToDashboard.click(); 
+        } catch(error) { console.error(error); }
+    }
+});
+
+
+// ==========================================
+// 3. OBSŁUGA WYDATKÓW I TRANSZ W ZLECENIU
+// ==========================================
+
+function loadExpensesForProject(projectId) {
+    const expensesRef = collection(db, "projects", projectId, "expenses");
+    const expensesQuery = query(expensesRef, orderBy("createdAt", "desc"));
+
+    expensesUnsubscribe = onSnapshot(expensesQuery, (snapshot) => {
+        expenseListContainer.innerHTML = ''; 
+        let totalSum = 0;
+
+        snapshot.forEach((firestoreDoc) => {
+            const data = firestoreDoc.data();
+            totalSum += data.cost;
+            const dateObj = data.createdAt ? data.createdAt.toDate() : new Date();
+
+            const li = document.createElement('li');
+            li.classList.add('expense-item');
+            li.innerHTML = `
+                <div class="expense-info">
+                    <strong>${data.name}</strong>
+                    <span class="expense-date">${dateObj.toLocaleDateString('pl-PL')}</span>
+                </div>
+                <div class="expense-actions">
+                    <span class="expense-amount text-red">- ${data.cost.toFixed(2)} zł</span>
+                    <button class="btn-delete" data-id="${firestoreDoc.id}" title="Usuń wydatek">🗑️</button>
+                </div>
+            `;
+            expenseListContainer.appendChild(li);
+        });
+
+        currentTotalExpenses = totalSum; 
+        totalExpensesEl.textContent = `${totalSum.toFixed(2)} zł`;
+        const balance = currentProjectDeposit - totalSum;
+        currentBalanceEl.textContent = `${balance.toFixed(2)} zł`;
+    });
+}
+
+expenseForm.addEventListener('submit', async (e) => {
+    e.preventDefault(); 
+    if (!currentProjectId) return; 
+
+    const name = expenseNameInput.value;
+    const cost = parseFloat(expenseCostInput.value);
+    
+    if (!name || isNaN(cost)) return;
+
+    try {
+        await addDoc(collection(db, "projects", currentProjectId, "expenses"), {
+            name: name,
+            cost: cost,
+            createdAt: new Date()
+        });
+
+        const projectName = detailsClientName.textContent; 
+        await addDoc(collection(db, "company_finances"), {
+            type: 'expense',
+            desc: `Koszt zlecenia (${projectName}): ${name}`,
+            amount: cost,
+            createdAt: new Date()
+        });
+
+        expenseForm.reset();
+    } catch (error) { console.error(error); }
+});
+
+expenseListContainer.addEventListener('click', async (e) => {
+    if (e.target.classList.contains('btn-delete') && currentProjectId) {
+        const expenseId = e.target.getAttribute('data-id');
+        if(confirm("Czy usunąć wydatek?")) {
+            await deleteDoc(doc(db, "projects", currentProjectId, "expenses", expenseId));
+        }
+    }
+});
+
+trancheForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentProjectId) return;
+
+    const amount = parseFloat(trancheAmountInput.value);
+    if (isNaN(amount) || amount <= 0) return;
+
+    try {
+        const newDeposit = currentProjectDeposit + amount;
+        await updateDoc(doc(db, "projects", currentProjectId), {
+            deposit: newDeposit
+        });
+
+        const projectName = detailsClientName.textContent;
+        await addDoc(collection(db, "company_finances"), {
+            type: 'income',
+            desc: `Kolejna transza (Zlecenie: ${projectName})`,
+            amount: amount,
+            createdAt: new Date()
+        });
+
+        trancheForm.reset();
+    } catch (error) {
+        console.error("Błąd podczas dodawania transzy: ", error);
+        alert("Wystąpił błąd!");
+    }
+});
+
+
+// ==========================================
+// 4. OBSŁUGA ZAKŁADEK (NAWIGACJA)
+// ==========================================
+
+const tabProjects = document.getElementById('tab-projects');
+const tabFinances = document.getElementById('tab-finances');
+const financesView = document.getElementById('finances-view');
+
+tabFinances.addEventListener('click', () => {
+    tabFinances.classList.add('active');
+    tabProjects.classList.remove('active');
+    
+    dashboardView.classList.add('hidden');
+    projectDetailsView.classList.add('hidden');
+    financesView.classList.remove('hidden');
+});
+
+tabProjects.addEventListener('click', () => {
+    tabProjects.classList.add('active');
+    tabFinances.classList.remove('active');
+    
+    financesView.classList.add('hidden');
+    dashboardView.classList.remove('hidden');
+    projectDetailsView.classList.add('hidden');
+    
+    if (expensesUnsubscribe) expensesUnsubscribe();
+    if (projectUnsubscribe) projectUnsubscribe();
+    currentProjectId = null;
+}); 
+// ==========================================
 // 5. OBSŁUGA FINANSÓW FIRMY
 // ==========================================
 
 const financeForm = document.getElementById('finance-form');
 const financeListContainer = document.getElementById('finance-list-container');
 const companyTotalBalanceEl = document.getElementById('company-total-balance');
-const monthlySalaryTotalEl = document.getElementById('monthly-salary-total'); // Nowy licznik pensji
+const monthlySalaryTotalEl = document.getElementById('monthly-salary-total'); 
+
+// Pobieranie naszych nowych, polskich list rozwijanych
+const monthSelect = document.getElementById('finance-month'); 
+const yearSelect = document.getElementById('finance-year'); 
+
 const financesRef = collection(db, "company_finances");
 const financesQuery = query(financesRef, orderBy("createdAt", "desc"));
 
 let expensesChartInstance = null; 
-let lastFinancesSnapshot = null; // Trzymamy pobrane dane w pamięci
-let currentFinanceFilter = 'all'; // Domyślny filtr
+let lastFinancesSnapshot = null; 
+let currentFinanceFilter = 'all'; 
 
-// Pobieranie danych z bazy w czasie rzeczywistym
+// Ustawienie domyślnej daty na listach na dzisiejszą
+const now = new Date();
+monthSelect.value = now.getMonth(); // od 0 (Styczeń) do 11 (Grudzień)
+yearSelect.value = now.getFullYear();
+
+// Przeliczanie po każdej zmianie miesiąca lub roku na liście
+monthSelect.addEventListener('change', renderFinancesList);
+yearSelect.addEventListener('change', renderFinancesList);
+
 onSnapshot(financesQuery, (snapshot) => {
     lastFinancesSnapshot = snapshot;
-    renderFinancesList(); // Funkcja rysująca listę na podstawie wybranego filtra
+    renderFinancesList(); 
 });
 
-// Funkcja odpowiedzialna za rysowanie historii i wykresów
 function renderFinancesList() {
     if (!lastFinancesSnapshot) return;
     
@@ -239,8 +453,10 @@ function renderFinancesList() {
     let totalCompanyMoney = 0;
     let monthlySalarySum = 0;
     
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
+    // Pobieranie daty z naszych nowych list rozwijanych
+    const targetMonth = parseInt(monthSelect.value, 10);
+    const targetYear = parseInt(yearSelect.value, 10);
+    
     const categoryTotals = {};
     let hasVisibleItems = false;
 
@@ -248,7 +464,7 @@ function renderFinancesList() {
         financeListContainer.innerHTML = '<p style="color: #718096;">Brak operacji finansowych.</p>';
         companyTotalBalanceEl.textContent = '0.00 zł';
         monthlySalaryTotalEl.textContent = '0.00 zł';
-        document.getElementById('monthly-summary-list').innerHTML = '<p>Brak wydatków w tym miesiącu.</p>';
+        document.getElementById('monthly-summary-list').innerHTML = '<p>Brak wydatków.</p>';
         if(expensesChartInstance) expensesChartInstance.destroy();
         return;
     }
@@ -257,28 +473,25 @@ function renderFinancesList() {
         const data = firestoreDoc.data();
         const dateObj = data.createdAt ? data.createdAt.toDate() : new Date();
         
-        // Zliczanie globalne kasy
         if (data.type === 'income') {
             totalCompanyMoney += data.amount;
         } else {
             totalCompanyMoney -= data.amount;
         }
 
-        // Zliczanie wypłat (pensji) w obecnym miesiącu
-        if (data.type === 'withdrawal' && dateObj.getMonth() === currentMonth && dateObj.getFullYear() === currentYear) {
+        // Używamy targetMonth i targetYear do filtrowania statystyk
+        if (data.type === 'withdrawal' && dateObj.getMonth() === targetMonth && dateObj.getFullYear() === targetYear) {
             monthlySalarySum += data.amount;
         }
 
-        // Zliczanie kategorii do wykresu w obecnym miesiącu
-        if (data.type === 'expense' && dateObj.getMonth() === currentMonth && dateObj.getFullYear() === currentYear) {
+        if (data.type === 'expense' && dateObj.getMonth() === targetMonth && dateObj.getFullYear() === targetYear) {
             const cat = data.category && data.category !== "Brak" ? data.category : "Inne / Nieprzypisane";
             categoryTotals[cat] = (categoryTotals[cat] || 0) + data.amount;
         }
 
-        // ZASTOSOWANIE FILTRA
         const isWithdrawal = data.type === 'withdrawal';
-        if (currentFinanceFilter === 'operations' && isWithdrawal) return; // Skips withdrawals
-        if (currentFinanceFilter === 'salary' && !isWithdrawal) return; // Skips non-withdrawals
+        if (currentFinanceFilter === 'operations' && isWithdrawal) return; 
+        if (currentFinanceFilter === 'salary' && !isWithdrawal) return; 
         
         hasVisibleItems = true;
 
@@ -296,13 +509,12 @@ function renderFinancesList() {
             sign = '-';
         } else {
             typeLabel = 'Wypłata własna';
-            amountColor = 'text-purple'; // Wyróżnienie kolorem fioletowym
+            amountColor = 'text-purple'; 
             sign = '-';
         }
 
         const li = document.createElement('li');
         li.classList.add('expense-item');
-        // Jeśli to wypłata, możemy lekko zmienić styl, żeby się odróżniała
         if (data.type === 'withdrawal') {
             li.style.borderLeft = '4px solid #805ad5';
         }
@@ -324,11 +536,9 @@ function renderFinancesList() {
         financeListContainer.innerHTML = '<p style="color: #718096;">Brak operacji dla wybranego filtru.</p>';
     }
 
-    // Aktualizacja kafelków tekstowych
     companyTotalBalanceEl.textContent = `${totalCompanyMoney.toFixed(2)} zł`;
     monthlySalaryTotalEl.textContent = `${monthlySalarySum.toFixed(2)} zł`;
 
-    // Aktualizacja wykresu
     const labels = Object.keys(categoryTotals);
     const dataValues = Object.values(categoryTotals);
     const summaryListContainer = document.getElementById('monthly-summary-list');
@@ -361,24 +571,20 @@ function renderFinancesList() {
     }
 }
 
-// Obsługa przycisków filtrowania
 const filterButtons = document.querySelectorAll('.filter-btn');
 filterButtons.forEach(btn => {
     btn.addEventListener('click', (e) => {
-        // Zdejmij klasę 'active' i domyślne kolory ze wszystkich przycisków
         filterButtons.forEach(b => {
             b.classList.remove('active');
             b.style.background = 'var(--bg-color)';
             b.style.color = 'inherit';
         });
         
-        // Nałóż styl aktywnego na kliknięty
         const clickedBtn = e.currentTarget;
         clickedBtn.classList.add('active');
         clickedBtn.style.background = 'var(--primary-color)';
         clickedBtn.style.color = 'white';
         
-        // Zaktualizuj zmienną i przerysuj listę
         currentFinanceFilter = clickedBtn.getAttribute('data-filter');
         renderFinancesList();
     });
