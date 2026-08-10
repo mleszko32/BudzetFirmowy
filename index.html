@@ -228,56 +228,97 @@
     </div>
     </section>
 
-    <div class="main-content">
-      <section class="card form-section">
-        <h2>Rejestruj operację</h2>
-        <form id="finance-form">
-          <div class="form-group">
-            <label for="finance-type">Rodzaj operacji</label>
-            <select id="finance-type" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
-              <option value="income">Wpływ (np. wpłata od klienta)</option>
-              <option value="expense">Koszt firmowy (np. paliwo, sprzęt)</option>
-              <option value="withdrawal">Wypłata własna (zysk)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="finance-category">Kategoria (dla kosztów)</label>
-            <select id="finance-category" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
-              <option value="">-- Nie dotyczy / Brak --</option>
-              <option value="Narzędzia i osprzęt">Narzędzia i osprzęt</option>
-              <option value="Materiały ogólne">Materiały ogólne na warsztat</option>
-              <option value="Paliwo i transport">Paliwo i transport</option>
-              <option value="Opłaty stałe">Opłaty stałe (ZUS, księgowość, raty)</option>
-              <option value="Inne">Inne / Różne</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="finance-desc">Opis</label>
-            <input type="text" id="finance-desc" placeholder="Krótki opis operacji" required>
-          </div>
-          <div class="form-group">
-            <label for="finance-amount">Kwota (zł)</label>
-            <input type="number" id="finance-amount" step="0.01" required>
-          </div>
-          <button type="submit" class="btn btn-primary">Zapisz w kasie</button>
-        </form>
-      </section>
+    <div class="main-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px;">
+      
+      <!-- LEWA KOLUMNA: Wprowadzanie danych -->
+      <div style="display: flex; flex-direction: column; gap: 24px;">
+        
+        <section class="card form-section" style="margin-bottom: 0;">
+          <h2>Rejestruj operację</h2>
+          <form id="finance-form">
+            <div class="form-group">
+              <label for="finance-type">Rodzaj operacji</label>
+              <select id="finance-type" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
+                <option value="income">Wpływ (np. wpłata od klienta)</option>
+                <option value="expense">Koszt firmowy (np. paliwo, sprzęt)</option>
+                <option value="withdrawal">Wypłata własna (zysk)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="finance-category">Kategoria (dla kosztów)</label>
+              <select id="finance-category" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
+                <option value="">-- Nie dotyczy / Brak --</option>
+                <option value="Narzędzia i osprzęt">Narzędzia i osprzęt</option>
+                <option value="Materiały ogólne">Materiały ogólne na warsztat</option>
+                <option value="Paliwo i transport">Paliwo i transport</option>
+                <option value="Opłaty stałe">Opłaty stałe (ZUS, księgowość, raty)</option>
+                <option value="Inne">Inne / Różne</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="finance-desc">Opis</label>
+              <input type="text" id="finance-desc" placeholder="Krótki opis operacji" required>
+            </div>
+            <div class="form-group">
+              <label for="finance-amount">Kwota (zł)</label>
+              <input type="number" id="finance-amount" step="0.01" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Zapisz w kasie</button>
+          </form>
+        </section>
 
-      <section class="card list-section">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
-          <h2 style="margin: 0;">Historia operacji</h2>
-          <div style="display: flex; gap: 8px;" id="finance-filters">
-            <button class="btn filter-btn active" data-filter="all" style="padding: 6px 12px; font-size: 13px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--primary-color); color: white; cursor: pointer;">Wszystko</button>
-            <button class="btn filter-btn" data-filter="operations" style="padding: 6px 12px; font-size: 13px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-color); cursor: pointer;">Koszty i Wpływy</button>
-            <button class="btn filter-btn" data-filter="salary" style="padding: 6px 12px; font-size: 13px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-color); cursor: pointer;">Tylko Wypłaty</button>
+        <!-- NOWOŚĆ: Formularz planowanych opłat -->
+        <section class="card form-section" style="margin-bottom: 0;">
+          <h2>Dodaj planowany wydatek (ZUS, Podatki, Raty)</h2>
+          <form id="planned-expense-form">
+            <div class="form-group">
+              <label for="planned-name">Tytuł opłaty</label>
+              <input type="text" id="planned-name" placeholder="np. ZUS, Podatek VAT, Rata za auto" required>
+            </div>
+            <div class="summary-grid">
+              <div class="form-group">
+                <label for="planned-amount">Kwota (zł)</label>
+                <input type="number" id="planned-amount" step="0.01" required>
+              </div>
+              <div class="form-group">
+                <label for="planned-date">Termin płatności</label>
+                <input type="date" id="planned-date" required>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="background-color: #ed8936; border-color: #ed8936;">Zapisz do zapłaty</button>
+          </form>
+        </section>
+
+      </div>
+
+      <!-- PRAWA KOLUMNA: Listy i podsumowania -->
+      <div style="display: flex; flex-direction: column; gap: 24px;">
+
+        <!-- NOWOŚĆ: Lista planowanych opłat -->
+        <section class="card list-section" style="margin-bottom: 0; border-top: 4px solid #ed8936;">
+          <h2 style="color: #dd6b20;">Oczekujące płatności</h2>
+          <ul class="expense-list" id="planned-list-container">
+            <p style="font-size: 14px; color: #718096;">Ładowanie planowanych...</p>
+          </ul>
+        </section>
+
+        <!-- ZMODYFIKOWANE: Historia pogrupowana po dacie -->
+        <section class="card list-section" style="margin-bottom: 0;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+            <h2 style="margin: 0;">Historia operacji</h2>
+            <div style="display: flex; gap: 8px;" id="finance-filters">
+              <button class="btn filter-btn active" data-filter="all" style="padding: 6px 12px; font-size: 13px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--primary-color); color: white; cursor: pointer;">Wszystko</button>
+              <button class="btn filter-btn" data-filter="operations" style="padding: 6px 12px; font-size: 13px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-color); cursor: pointer;">Koszty i Wpływy</button>
+              <button class="btn filter-btn" data-filter="salary" style="padding: 6px 12px; font-size: 13px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-color); cursor: pointer;">Tylko Wypłaty</button>
+            </div>
           </div>
-        </div>
-        <ul class="expense-list" id="finance-list-container">
-          <p>Ładowanie historii...</p>
-        </ul>
-      </section>
+          <ul class="expense-list" id="finance-list-container" style="display: flex; flex-direction: column; gap: 8px;">
+            <p style="font-size: 14px; color: #718096;">Ładowanie historii...</p>
+          </ul>
+        </section>
+
+      </div>
     </div>
-  </div>
     </div>
 
     <script type="module" src="/src/main.js"></script>

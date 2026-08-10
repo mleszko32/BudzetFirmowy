@@ -515,6 +515,7 @@ if (trancheForm) {
 }
 
 // --- RENDERING FINANSÓW FIRMY ---
+// --- RENDERING FINANSÓW FIRMY ---
 function renderFinancesList() {
     if (!lastFinancesSnapshot || !financeListContainer) return;
     
@@ -527,9 +528,12 @@ function renderFinancesList() {
     
     const categoryTotals = {};
     let hasVisibleItems = false;
+    
+    // NOWOŚĆ: Obiekt przechowujący pogrupowane operacje
+    const groupedByDate = {}; 
 
     if (lastFinancesSnapshot.empty) {
-        financeListContainer.innerHTML = '<p style="color: #718096;">Brak operacji finansowych.</p>';
+        financeListContainer.innerHTML = '<p style="color: #718096; font-size: 14px;">Brak operacji finansowych.</p>';
         if (companyTotalBalanceEl) companyTotalBalanceEl.textContent = '0.00 zł';
         if (monthlySalaryTotalEl) monthlySalaryTotalEl.textContent = '0.00 zł';
         const summaryListContainer = document.getElementById('monthly-summary-list');
@@ -581,27 +585,47 @@ function renderFinancesList() {
             sign = '-';
         }
 
-        const li = document.createElement('li');
-        li.classList.add('expense-item');
-        if (data.type === 'withdrawal') {
-            li.style.borderLeft = '4px solid #805ad5';
+        // Przygotowujemy klucz daty (np. 10.08.2026)
+        const dateStr = dateObj.toLocaleDateString('pl-PL');
+        if (!groupedByDate[dateStr]) {
+            groupedByDate[dateStr] = [];
         }
         
-        li.innerHTML = `
-            <div class="expense-info">
-                <strong>${data.desc}</strong>
-                <span class="expense-date">${dateObj.toLocaleDateString('pl-PL')} | ${typeLabel}</span>
-            </div>
-            <div class="expense-actions">
-                <span class="expense-amount ${amountColor}" style="${data.type === 'withdrawal' ? 'color: #805ad5;' : ''}">${sign} ${data.amount.toFixed(2)} zł</span>
-                <button class="btn-delete finance-delete" data-id="${firestoreDoc.id}" title="Usuń wpis">🗑️</button>
-            </div>
-        `;
-        financeListContainer.appendChild(li);
+        // Zapisujemy element w odpowiedniej szufladce dnia
+        groupedByDate[dateStr].push({ id: firestoreDoc.id, ...data, typeLabel, amountColor, sign });
     });
 
+    // RYSOWANIE POGRUPOWANYCH DANYCH
     if (!hasVisibleItems) {
-        financeListContainer.innerHTML = '<p style="color: #718096;">Brak operacji dla wybranego filtru.</p>';
+        financeListContainer.innerHTML = '<p style="color: #718096; font-size: 14px;">Brak operacji dla wybranego filtru.</p>';
+    } else {
+        for (const [dateStr, items] of Object.entries(groupedByDate)) {
+            // Dodajemy nagłówek z datą
+            const dateHeader = document.createElement('div');
+            dateHeader.innerHTML = `<h4 style="margin: 20px 0 8px 0; border-bottom: 2px solid var(--border-color); padding-bottom: 4px; color: #4a5568; font-size: 13px;">📅 ${dateStr}</h4>`;
+            financeListContainer.appendChild(dateHeader);
+
+            // Wrzucamy pod niego wszystkie operacje z tego dnia
+            items.forEach(item => {
+                const li = document.createElement('li');
+                li.classList.add('expense-item');
+                if (item.type === 'withdrawal') {
+                    li.style.borderLeft = '4px solid #805ad5';
+                }
+                
+                li.innerHTML = `
+                    <div class="expense-info">
+                        <strong>${item.desc}</strong>
+                        <span class="expense-date">${item.typeLabel}</span>
+                    </div>
+                    <div class="expense-actions">
+                        <span class="expense-amount ${item.amountColor}" style="${item.type === 'withdrawal' ? 'color: #805ad5;' : ''}">${item.sign} ${item.amount.toFixed(2)} zł</span>
+                        <button class="btn-delete finance-delete" data-id="${item.id}" title="Usuń wpis">🗑️</button>
+                    </div>
+                `;
+                financeListContainer.appendChild(li);
+            });
+        }
     }
 
     if (companyTotalBalanceEl) companyTotalBalanceEl.textContent = `${totalCompanyMoney.toFixed(2)} zł`;
@@ -778,6 +802,125 @@ if (btnEditTotal) {
             });
         } catch (error) { 
             console.error("Błąd podczas edycji kwoty: ", error); 
+        }
+    });
+}
+// ==========================================
+// PLANOWANE WYDATKI (ZUS, PODATKI, RATY)
+// ==========================================
+
+const plannedExpenseForm = document.getElementById('planned-expense-form');
+const plannedListContainer = document.getElementById('planned-list-container');
+let plannedUnsubscribe = null;
+
+// Pobieranie danych z bazy (tylko dla zalogowanego)
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        const plannedRef = collection(db, "planned_expenses");
+        const plannedQuery = query(plannedRef, orderBy("dueDate", "asc"));
+        
+        plannedUnsubscribe = onSnapshot(plannedQuery, (snapshot) => {
+            if (!plannedListContainer) return;
+            plannedListContainer.innerHTML = '';
+            
+            if (snapshot.empty) {
+                plannedListContainer.innerHTML = '<p style="color: #718096; font-size: 14px;">Brak oczekujących płatności. Uff!</p>';
+                return;
+            }
+
+            snapshot.forEach((firestoreDoc) => {
+                const data = firestoreDoc.data();
+                const docId = firestoreDoc.id;
+
+                // Weryfikacja czy termin już minął
+                const today = new Date();
+                today.setHours(0,0,0,0);
+                const dueDate = new Date(data.dueDate);
+                const isOverdue = dueDate < today;
+
+                const li = document.createElement('li');
+                li.classList.add('expense-item');
+                li.style.borderLeft = isOverdue ? '4px solid #e53e3e' : '4px solid #ed8936';
+
+                li.innerHTML = `
+                    <div class="expense-info">
+                        <strong>${data.name}</strong>
+                        <span class="expense-date" style="${isOverdue ? 'color: #e53e3e; font-weight: bold;' : ''}">Termin: ${dueDate.toLocaleDateString('pl-PL')}</span>
+                    </div>
+                    <div class="expense-actions" style="display: flex; align-items: center; gap: 12px;">
+                        <span class="expense-amount text-red">- ${data.amount.toFixed(2)} zł</span>
+                        <button class="btn btn-primary btn-pay-planned" 
+                                data-id="${docId}" 
+                                data-name="${data.name}" 
+                                data-amount="${data.amount}" 
+                                style="background-color: #38a169; border-color: #38a169; padding: 4px 8px; font-size: 12px;">
+                            Opłać
+                        </button>
+                        <button class="btn-delete btn-delete-planned" data-id="${docId}" title="Usuń z planowanych bez opłacania">🗑️</button>
+                    </div>
+                `;
+                plannedListContainer.appendChild(li);
+            });
+        });
+    } else {
+        if (plannedUnsubscribe) plannedUnsubscribe();
+    }
+});
+
+// Zapisywanie nowego planowanego wydatku
+if (plannedExpenseForm) {
+    plannedExpenseForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const name = document.getElementById('planned-name').value;
+        const amount = parseFloat(document.getElementById('planned-amount').value);
+        const dateString = document.getElementById('planned-date').value;
+
+        if (!name || isNaN(amount) || !dateString) return;
+
+        try {
+            await addDoc(collection(db, "planned_expenses"), {
+                name: name,
+                amount: amount,
+                dueDate: dateString,
+                createdAt: new Date()
+            });
+            plannedExpenseForm.reset();
+        } catch (error) { console.error("Błąd zapisu planowanego wydatku:", error); }
+    });
+}
+
+// Obsługa przycisków "Opłać" i kosza w sekcji planowanych
+if (plannedListContainer) {
+    plannedListContainer.addEventListener('click', async (e) => {
+        
+        // Funkcja 1: Kliknięto zielone "Opłać"
+        if (e.target.classList.contains('btn-pay-planned')) {
+            const docId = e.target.getAttribute('data-id');
+            const name = e.target.getAttribute('data-name');
+            const amount = parseFloat(e.target.getAttribute('data-amount'));
+
+            try {
+                // Dodajemy to do głównej kasy jako normalny koszt
+                await addDoc(collection(db, "company_finances"), {
+                    type: 'expense',
+                    category: "Opłaty stałe", // Automatycznie kategoryzujemy jako opłatę stałą
+                    desc: name,
+                    amount: amount,
+                    createdAt: new Date()
+                });
+                
+                // I wyrzucamy z listy oczekujących
+                await deleteDoc(doc(db, "planned_expenses", docId));
+            } catch (error) { console.error(error); }
+        }
+
+        // Funkcja 2: Kliknięto ikonę kosza (anulowanie)
+        if (e.target.classList.contains('btn-delete-planned')) {
+            const docId = e.target.getAttribute('data-id');
+            if(confirm("Czy na pewno chcesz usunąć tę pozycję z planowanych? Pieniądze NIE zostaną potrącone z kasy.")) {
+                await deleteDoc(doc(db, "planned_expenses", docId));
+            }
         }
     });
 }
