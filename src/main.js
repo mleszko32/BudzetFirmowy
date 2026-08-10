@@ -819,32 +819,26 @@ if (btnScanInvoice) {
         const file = fileInput.files[0];
         
         if (!file) {
-            alert("Najpierw zrób zdjęcie lub wybierz plik z fakturą z hurtowni!");
-            return;
-        }
-        if (!GEMINI_API_KEY || GEMINI_API_KEY === "TWÓJ_KLUCZ_API_TUTAJ") {
-            alert("Nie wpisałeś klucza API w kodzie main.js!");
+            alert("Najpierw zrób zdjęcie lub wybierz plik z fakturą!");
             return;
         }
 
-        // Przygotowanie interfejsu na czas myślenia AI
         scannerLoading.style.display = 'block';
         scannerLoading.textContent = "Sztuczna inteligencja czyta fakturę... (to może potrwać do 10 sekund)";
         scannerResultsSection.classList.add('hidden');
         btnScanInvoice.disabled = true;
 
         try {
-            // 1. Konwersja zdjęcia
+            // 1. Konwersja zdjęcia (z zabezpieczeniem formatu dla iPhone'ów)
             const base64Image = await fileToBase64(file);
-            const mimeType = file.type;
+            const mimeType = file.type || "image/jpeg"; 
 
-            // 2. Twardy i precyzyjny prompt nakazujący zwrot tylko formatu JSON
-            const promptText = `Przeanalizuj to zdjęcie faktury z hurtowni stolarskiej (płyty, fronty, okucia itp.). 
+            const promptText = `Przeanalizuj to zdjęcie faktury z hurtowni stolarskiej. 
             Wypisz wszystkie pozycje materiałowe oraz ich ostateczne ceny brutto. 
-            MUSISZ zwrócić wynik TYLKO i WYŁĄCZNIE jako czysty, poprawny kod JSON (tablica obiektów), bez żadnego dodatkowego tekstu, wstępów i znaczników markdown. 
-            Wymagany format to dokładnie: [{"name": "nazwa materiału", "price": 12.34}, {"name": "inny materiał", "price": 50.00}]`;
+            MUSISZ zwrócić wynik w formacie JSON jako tablicę obiektów.
+            Wymagany format: [{"name": "nazwa materiału", "price": 12.34}]`;
 
-            // 3. Strzał do API Google Gemini 1.5 Flash
+            // 2. Strzał do API Google z nowym wymuszeniem formatu JSON
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -854,20 +848,27 @@ if (btnScanInvoice) {
                             { text: promptText },
                             { inlineData: { mimeType: mimeType, data: base64Image } }
                         ]
-                    }]
+                    }],
+                    // To zmusza Google do idealnie czystego kodu
+                    generationConfig: {
+                        responseMimeType: "application/json"
+                    }
                 })
             });
 
-            if (!response.ok) throw new Error("Błąd połączenia z API Google");
+            // 3. Sprawdzamy czy Google nie zablokowało zapytania
+            if (!response.ok) {
+                const errData = await response.json();
+                // Wyrzucamy prawdziwy komunikat od Google
+                throw new Error(errData.error?.message || `Błąd sieciowy: kod ${response.status}`);
+            }
 
             const data = await response.json();
+            
+            // 4. Odczytujemy i budujemy tabelkę
             const textResult = data.candidates[0].content.parts[0].text;
+            const recognizedItems = JSON.parse(textResult);
 
-            // 4. Sprzątanie odpowiedzi i wyciąganie danych
-            const cleanJson = textResult.replace(/```json/gi, '').replace(/```/g, '').trim();
-            const recognizedItems = JSON.parse(cleanJson);
-
-            // 5. Budowanie tabelki do przypisywania
             scannerItemsContainer.innerHTML = '';
             const projectOptions = activeProjectsList.map(p => `<option value="${p.id}">Zlecenie: ${p.name}</option>`).join('');
 
@@ -894,7 +895,8 @@ if (btnScanInvoice) {
 
         } catch (error) {
             console.error("Błąd Skanera:", error);
-            alert("AI nie poradziło sobie z tym zdjęciem lub wystąpił błąd sieci. Upewnij się, że zdjęcie jest ostre i jasne.");
+            // TUTAJ MAGIA: Wyświetlamy konkretny powód wysypania się błędu!
+            alert("Błąd: " + error.message);
             scannerLoading.style.display = 'none';
         } finally {
             btnScanInvoice.disabled = false;
