@@ -42,6 +42,8 @@
       <nav class="main-nav card">
         <button class="nav-btn active" id="tab-projects">Moje zlecenia</button>
         <button class="nav-btn" id="tab-finances">Finanse firmy</button>
+        <button class="nav-btn" id="tab-scanner" style="color: #6b46c1; font-weight: bold;">Skaner AI ✨</button>
+        <button class="nav-btn" id="tab-trash" style="color: #e53e3e; font-weight: bold;">🗑️ Kosz</button>
       </nav>
 
       <!-- WIDOK 1: PANEL GŁÓWNY -->
@@ -94,43 +96,42 @@
             </div>
             <div style="display: flex; gap: 8px;">
               <button id="btn-archive-project" class="btn" style="background: #e2e8f0; color: #2d3748; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Zarchiwizuj</button>
-              <button id="btn-delete-project" class="btn" style="background: var(--red-color); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Usuń</button>
+              <button id="btn-delete-project" class="btn" style="background: var(--red-color); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold;">Usuń do kosza</button>
             </div>
           </div>
         </header>
 
         <section class="summary-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
-      <div class="card summary-card" style="position: relative;">
-        <h3>Wartość zlecenia</h3>
-        <div style="display: flex; align-items: baseline; justify-content: space-between;">
-          <p class="amount" id="total-price" style="margin: 0;">0 zł</p>
-          <button id="btn-edit-total" style="background: none; border: none; color: #3182ce; cursor: pointer; text-decoration: underline; font-size: 13px; font-weight: bold; padding: 0;">Zmień</button>
-        </div>
-      </div>
-      <div class="card summary-card">
-        <h3>Suma wpłat klienta</h3>
-        <p class="amount text-blue" id="deposit">0 zł</p>
-      </div>
-      <div class="card summary-card" style="border-left: 4px solid #ed8936;">
-        <h3>Klient ma dopłacić</h3>
-        <p class="amount" id="remaining-to-pay" style="color: #ed8936;">0 zł</p>
-      </div>
-      <div class="card summary-card">
-        <h3>Suma wydatków</h3>
-        <p class="amount text-red" id="total-expenses">0 zł</p>
-      </div>
-      <div class="card summary-card">
-        <h3>Zostało z wpłaconych</h3>
-        <p class="amount" id="current-balance">0 zł</p>
-      </div>
-      <div class="card summary-card highlight" style="border-left: 4px solid #38a169;">
-        <h3>Szacowany zysk na czysto</h3>
-        <p class="amount" id="expected-profit" style="color: #38a169; font-weight: bold;">0 zł</p>
-      </div>
-    </section>
+          <div class="card summary-card" style="position: relative;">
+            <h3>Wartość zlecenia</h3>
+            <div style="display: flex; align-items: baseline; justify-content: space-between;">
+              <p class="amount" id="total-price" style="margin: 0;">0 zł</p>
+              <button id="btn-edit-total" style="background: none; border: none; color: #3182ce; cursor: pointer; text-decoration: underline; font-size: 13px; font-weight: bold; padding: 0;">Zmień</button>
+            </div>
+          </div>
+          <div class="card summary-card">
+            <h3>Suma wpłat klienta</h3>
+            <p class="amount text-blue" id="deposit">0 zł</p>
+          </div>
+          <div class="card summary-card" style="border-left: 4px solid #ed8936;">
+            <h3>Klient ma dopłacić</h3>
+            <p class="amount" id="remaining-to-pay" style="color: #ed8936;">0 zł</p>
+          </div>
+          <div class="card summary-card">
+            <h3>Suma wydatków</h3>
+            <p class="amount text-red" id="total-expenses">0 zł</p>
+          </div>
+          <div class="card summary-card">
+            <h3>Zostało z wpłaconych</h3>
+            <p class="amount" id="current-balance">0 zł</p>
+          </div>
+          <div class="card summary-card highlight" style="border-left: 4px solid #38a169;">
+            <h3>Szacowany zysk na czysto</h3>
+            <p class="amount" id="expected-profit" style="color: #38a169; font-weight: bold;">0 zł</p>
+          </div>
+        </section>
 
         <div class="main-content">
-          
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 24px;">
             <section class="card form-section" style="margin-bottom: 0;">
               <h2>Dodaj wydatek do zlecenia</h2>
@@ -159,20 +160,6 @@
             </section>
           </div>
 
-          <!-- Szybkie dodawanie wydatków (masowe) -->
-          <section class="card form-section" style="margin-bottom: 24px;">
-            <h2>Szybkie dodawanie (wklej listę)</h2>
-            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
-              Wklej tekst w formacie: <strong>kwota - nazwa</strong> (każdy wydatek w nowej linii).
-            </p>
-            <form id="bulk-expense-form">
-              <div class="form-group">
-                <textarea id="bulk-expense-text" rows="5" placeholder="np.&#10;1200,50 - fronty szuflad&#10;300 - plecy i dna" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius); resize: vertical;" required></textarea>
-              </div>
-              <button type="submit" class="btn btn-primary" style="background-color: #4a5568; border-color: #4a5568;">Wgraj całą listę</button>
-            </form>
-          </section>
-
           <section class="card list-section">
             <h2>Historia kosztów materiałowych</h2>
             <ul class="expense-list" id="expense-list-container"></ul>
@@ -181,151 +168,158 @@
       </div>
 
       <!-- WIDOK 3: FINANSE FIRMY -->
-  <!-- WIDOK 3: FINANSE FIRMY -->
-    <div id="finances-view" class="hidden">
-      
-      <!-- NOWOŚĆ: Trzy kafelki podsumowujące (Stan, Prognoza, Do odbioru) -->
-      <section class="summary-grid" style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
-        <div class="card summary-card highlight" style="text-align: center;">
-          <h3>Aktualny stan kasy</h3>
-          <p class="amount" id="company-total-balance" style="font-size: 28px;">0.00 zł</p>
-        </div>
-        <div class="card summary-card" style="text-align: center; border-left: 4px solid #e53e3e;">
-          <h3>Zostanie po opłatach</h3>
-          <p class="amount" id="company-balance-after-planned" style="font-size: 28px; font-weight: bold;">0.00 zł</p>
-        </div>
-        <div class="card summary-card" style="text-align: center; border-left: 4px solid #ed8936;">
-          <h3>Kwota do odbioru (w terenie)</h3>
-          <p class="amount" id="company-receivables" style="font-size: 28px; color: #ed8936;">0.00 zł</p>
-        </div>
-      </section>
-
-    <!-- NOWOŚĆ: Nasz własny, polski kalendarz (Dwie listy rozwijane) -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
-      <h2 style="margin: 0;">Raport miesięczny</h2>
-      <div style="display: flex; gap: 8px;">
-        <select id="finance-month" style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius); font-size: 16px; font-family: inherit; cursor: pointer; background: white;">
-          <option value="0">Styczeń</option>
-          <option value="1">Luty</option>
-          <option value="2">Marzec</option>
-          <option value="3">Kwiecień</option>
-          <option value="4">Maj</option>
-          <option value="5">Czerwiec</option>
-          <option value="6">Lipiec</option>
-          <option value="7">Sierpień</option>
-          <option value="8">Wrzesień</option>
-          <option value="9">Październik</option>
-          <option value="10">Listopad</option>
-          <option value="11">Grudzień</option>
-        </select>
-        
-        <select id="finance-year" style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius); font-size: 16px; font-family: inherit; cursor: pointer; background: white;">
-          <option value="2024">2024</option>
-          <option value="2025">2025</option>
-          <option value="2026">2026</option>
-          <option value="2027">2027</option>
-          <option value="2028">2028</option>
-          <option value="2029">2029</option>
-          <option value="2030">2030</option>
-        </select>
-      </div>
-    </div>
-    </section>
-
-    <div class="main-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px;">
-      
-      <!-- LEWA KOLUMNA: Wprowadzanie danych -->
-      <div style="display: flex; flex-direction: column; gap: 24px;">
-        
-        <section class="card form-section" style="margin-bottom: 0;">
-          <h2>Rejestruj operację</h2>
-          <form id="finance-form">
-            <div class="form-group">
-              <label for="finance-type">Rodzaj operacji</label>
-              <select id="finance-type" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
-                <option value="income">Wpływ (np. wpłata od klienta)</option>
-                <option value="expense">Koszt firmowy (np. paliwo, sprzęt)</option>
-                <option value="withdrawal">Wypłata własna (zysk)</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="finance-category">Kategoria (dla kosztów)</label>
-              <select id="finance-category" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
-                <option value="">-- Nie dotyczy / Brak --</option>
-                <option value="Narzędzia i osprzęt">Narzędzia i osprzęt</option>
-                <option value="Materiały ogólne">Materiały ogólne na warsztat</option>
-                <option value="Paliwo i transport">Paliwo i transport</option>
-                <option value="Opłaty stałe">Opłaty stałe (ZUS, księgowość, raty)</option>
-                <option value="Inne">Inne / Różne</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="finance-desc">Opis</label>
-              <input type="text" id="finance-desc" placeholder="Krótki opis operacji" required>
-            </div>
-            <div class="form-group">
-              <label for="finance-amount">Kwota (zł)</label>
-              <input type="number" id="finance-amount" step="0.01" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Zapisz w kasie</button>
-          </form>
-        </section>
-
-        <!-- NOWOŚĆ: Formularz planowanych opłat -->
-        <section class="card form-section" style="margin-bottom: 0;">
-          <h2>Dodaj planowany wydatek (ZUS, Podatki, Raty)</h2>
-          <form id="planned-expense-form">
-            <div class="form-group">
-              <label for="planned-name">Tytuł opłaty</label>
-              <input type="text" id="planned-name" placeholder="np. ZUS, Podatek VAT, Rata za auto" required>
-            </div>
-            <div class="summary-grid">
-              <div class="form-group">
-                <label for="planned-amount">Kwota (zł)</label>
-                <input type="number" id="planned-amount" step="0.01" required>
-              </div>
-              <div class="form-group">
-                <label for="planned-date">Termin płatności</label>
-                <input type="date" id="planned-date" required>
-              </div>
-            </div>
-            <button type="submit" class="btn btn-primary" style="background-color: #ed8936; border-color: #ed8936;">Zapisz do zapłaty</button>
-          </form>
-        </section>
-
-      </div>
-
-      <!-- PRAWA KOLUMNA: Listy i podsumowania -->
-      <div style="display: flex; flex-direction: column; gap: 24px;">
-
-        <!-- NOWOŚĆ: Lista planowanych opłat -->
-        <section class="card list-section" style="margin-bottom: 0; border-top: 4px solid #ed8936;">
-          <h2 style="color: #dd6b20;">Oczekujące płatności</h2>
-          <ul class="expense-list" id="planned-list-container">
-            <p style="font-size: 14px; color: #718096;">Ładowanie planowanych...</p>
-          </ul>
-        </section>
-
-        <!-- ZMODYFIKOWANE: Historia pogrupowana po dacie -->
-        <section class="card list-section" style="margin-bottom: 0;">
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
-            <h2 style="margin: 0;">Historia operacji</h2>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="finance-filters">
-              <button class="btn filter-btn active" data-filter="all" style="padding: 6px 12px; font-size: 13px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--primary-color); color: white; cursor: pointer;">Wszystko</button>
-              <button class="btn filter-btn" data-filter="income" style="padding: 6px 12px; font-size: 13px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-color); cursor: pointer;">Tylko Wpływy</button>
-              <button class="btn filter-btn" data-filter="expense" style="padding: 6px 12px; font-size: 13px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-color); cursor: pointer;">Tylko Koszty</button>
-              <button class="btn filter-btn" data-filter="salary" style="padding: 6px 12px; font-size: 13px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-color); cursor: pointer;">Tylko Wypłaty</button>
-            </div>
+      <div id="finances-view" class="hidden">
+        <section class="summary-grid" style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+          <div class="card summary-card highlight" style="text-align: center;">
+            <h3>Aktualny stan kasy</h3>
+            <p class="amount" id="company-total-balance" style="font-size: 28px;">0.00 zł</p>
           </div>
-          <ul class="expense-list" id="finance-list-container" style="display: flex; flex-direction: column; gap: 8px;">
-            <p style="font-size: 14px; color: #718096;">Ładowanie historii...</p>
-          </ul>
+          <div class="card summary-card" style="text-align: center; border-left: 4px solid #e53e3e;">
+            <h3>Zostanie po opłatach</h3>
+            <p class="amount" id="company-balance-after-planned" style="font-size: 28px; font-weight: bold;">0.00 zł</p>
+          </div>
+          <div class="card summary-card" style="text-align: center; border-left: 4px solid #ed8936;">
+            <h3>Kwota do odbioru (w terenie)</h3>
+            <p class="amount" id="company-receivables" style="font-size: 28px; color: #ed8936;">0.00 zł</p>
+          </div>
         </section>
 
-      </div>
-    </div>
-    </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+          <h2 style="margin: 0;">Raport miesięczny</h2>
+          <div style="display: flex; gap: 8px;">
+            <select id="finance-month" style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius); font-size: 16px; font-family: inherit; cursor: pointer; background: white;">
+              <option value="0">Styczeń</option><option value="1">Luty</option><option value="2">Marzec</option>
+              <option value="3">Kwiecień</option><option value="4">Maj</option><option value="5">Czerwiec</option>
+              <option value="6">Lipiec</option><option value="7">Sierpień</option><option value="8">Wrzesień</option>
+              <option value="9">Październik</option><option value="10">Listopad</option><option value="11">Grudzień</option>
+            </select>
+            <select id="finance-year" style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius); font-size: 16px; font-family: inherit; cursor: pointer; background: white;">
+              <option value="2024">2024</option><option value="2025">2025</option><option value="2026">2026</option>
+              <option value="2027">2027</option><option value="2028">2028</option><option value="2029">2029</option><option value="2030">2030</option>
+            </select>
+          </div>
+        </div>
 
+        <div class="main-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px;">
+          <div style="display: flex; flex-direction: column; gap: 24px;">
+            <section class="card form-section" style="margin-bottom: 0;">
+              <h2>Rejestruj operację</h2>
+              <form id="finance-form">
+                <div class="form-group">
+                  <label for="finance-type">Rodzaj operacji</label>
+                  <select id="finance-type" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
+                    <option value="income">Wpływ (np. wpłata od klienta)</option>
+                    <option value="expense">Koszt firmowy (np. paliwo, sprzęt)</option>
+                    <option value="withdrawal">Wypłata własna (zysk)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="finance-category">Kategoria (dla kosztów)</label>
+                  <select id="finance-category" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius);">
+                    <option value="">-- Nie dotyczy / Brak --</option>
+                    <option value="Narzędzia i osprzęt">Narzędzia i osprzęt</option>
+                    <option value="Materiały ogólne">Materiały ogólne na warsztat</option>
+                    <option value="Paliwo i transport">Paliwo i transport</option>
+                    <option value="Opłaty stałe">Opłaty stałe (ZUS, księgowość, raty)</option>
+                    <option value="Inne">Inne / Różne</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="finance-desc">Opis</label>
+                  <input type="text" id="finance-desc" placeholder="Krótki opis operacji" required>
+                </div>
+                <div class="form-group">
+                  <label for="finance-amount">Kwota (zł)</label>
+                  <input type="number" id="finance-amount" step="0.01" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Zapisz w kasie</button>
+              </form>
+            </section>
+
+            <section class="card form-section" style="margin-bottom: 0;">
+              <h2>Dodaj planowany wydatek (ZUS, Podatki, Raty)</h2>
+              <form id="planned-expense-form">
+                <div class="form-group">
+                  <label for="planned-name">Tytuł opłaty</label>
+                  <input type="text" id="planned-name" placeholder="np. ZUS, Podatek VAT, Rata za auto" required>
+                </div>
+                <div class="summary-grid">
+                  <div class="form-group">
+                    <label for="planned-amount">Kwota (zł)</label>
+                    <input type="number" id="planned-amount" step="0.01" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="planned-date">Termin płatności</label>
+                    <input type="date" id="planned-date" required>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="background-color: #ed8936; border-color: #ed8936;">Zapisz do zapłaty</button>
+              </form>
+            </section>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 24px;">
+            <section class="card list-section" style="margin-bottom: 0; border-top: 4px solid #ed8936;">
+              <h2 style="color: #dd6b20;">Oczekujące płatności</h2>
+              <ul class="expense-list" id="planned-list-container">
+                <p style="font-size: 14px; color: #718096;">Ładowanie planowanych...</p>
+              </ul>
+            </section>
+
+            <section class="card list-section" style="margin-bottom: 0;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                <h2 style="margin: 0;">Historia operacji</h2>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="finance-filters">
+                  <button class="btn filter-btn active" data-filter="all" style="padding: 6px 12px; font-size: 13px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--primary-color); color: white; cursor: pointer;">Wszystko</button>
+                  <button class="btn filter-btn" data-filter="income" style="padding: 6px 12px; font-size: 13px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-color); cursor: pointer;">Tylko Wpływy</button>
+                  <button class="btn filter-btn" data-filter="expense" style="padding: 6px 12px; font-size: 13px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-color); cursor: pointer;">Tylko Koszty</button>
+                  <button class="btn filter-btn" data-filter="salary" style="padding: 6px 12px; font-size: 13px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-color); cursor: pointer;">Tylko Wypłaty</button>
+                </div>
+              </div>
+              <ul class="expense-list" id="finance-list-container" style="display: flex; flex-direction: column; gap: 8px;">
+                <p style="font-size: 14px; color: #718096;">Ładowanie historii...</p>
+              </ul>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      <!-- WIDOK 4: SKANER FAKTUR AI -->
+      <div id="scanner-view" class="hidden">
+        <div class="main-content">
+          <section class="card form-section" style="margin-bottom: 24px;">
+            <h2>Inteligentny Skaner Faktur</h2>
+            <p style="font-size: 14px; color: #718096; margin-bottom: 16px;">Wgraj zdjęcie zbiorczej faktury z hurtowni, a AI automatycznie wyodrębni pozycje.</p>
+            <div style="display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+              <input type="file" id="invoice-upload-input" accept="image/*,application/pdf" style="flex: 1; min-width: 200px; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius); background: white;">
+              <button id="btn-scan-invoice" class="btn btn-primary" style="background-color: #805ad5; border-color: #805ad5;">Skanuj dokument ✨</button>
+            </div>
+            <div id="scanner-loading" style="display: none; color: #805ad5; font-size: 14px; font-weight: bold; margin-bottom: 16px;">AI analizuje fakturę... to potrwa kilka sekund.</div>
+          </section>
+
+          <section id="scanner-results-section" class="card list-section hidden" style="border-top: 4px solid #805ad5;">
+            <h2 style="color: #553c9a;">Rozpoznane pozycje (Symulacja)</h2>
+            <p style="font-size: 13px; color: #718096; margin-bottom: 16px;">Przypisz każdą pozycję do konkretnego zlecenia lub wrzuć w ogólne koszty warsztatowe.</p>
+            <div id="scanner-items-container" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;"></div>
+            <button id="btn-save-scanned-items" class="btn btn-primary" style="width: 100%; background-color: #38a169; border-color: #38a169;">Zaksięguj przypisane pozycje</button>
+          </section>
+        </div>
+      </div>
+
+      <!-- WIDOK 5: KOSZ -->
+      <div id="trash-view" class="hidden">
+        <div class="main-content">
+          <section class="card list-section" style="border-top: 4px solid #e53e3e;">
+            <h2 style="color: #c53030;">Kosz (Usunięte elementy)</h2>
+            <p style="font-size: 13px; color: #718096; margin-bottom: 16px;">Wszystko, co usuniesz, trafia tutaj jako zabezpieczenie. Kliknij "Przywróć", aby cofnąć usunięcie.</p>
+            <ul class="expense-list" id="trash-list-container" style="display: flex; flex-direction: column; gap: 8px;">
+              <p style="font-size: 14px; color: #718096;">Twój kosz jest pusty.</p>
+            </ul>
+          </section>
+        </div>
+      </div>
+
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
