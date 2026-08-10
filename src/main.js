@@ -1,7 +1,7 @@
 import './style.css';
 import { initializeApp } from "firebase/app";
 // Dodane nowe funkcje do obsługi Kosza: getDoc i setDoc
-import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, getDoc, setDoc } from "firebase/firestore";
+import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, getDoc, setDoc, getDocs } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
 import Chart from 'chart.js/auto'; 
 
@@ -410,15 +410,39 @@ if (btnArchiveProject) {
     });
 }
 
-// Zabezpieczenie usuwania zlecenia (Przeniesienie do kosza zamiast trwałego usunięcia)
+// Zabezpieczenie usuwania zlecenia (Przeniesienie do kosza i kaskadowe usuwanie kosztów)
 if (btnDeleteProject) {
     btnDeleteProject.addEventListener('click', async () => {
         if(!currentProjectId) return;
-        if(confirm("Czy na pewno chcesz przenieść to zlecenie do kosza?")) {
-            const ref = doc(db, "projects", currentProjectId);
-            const pName = detailsClientName ? detailsClientName.textContent : 'Zlecenie';
-            await moveToTrash(ref, `Całe zlecenie: ${pName}`);
-            if (btnBackToDashboard) btnBackToDashboard.click(); 
+        
+        if(confirm("Czy na pewno chcesz przenieść to zlecenie do kosza? (Zwrócimy koszty materiałowe z powrotem do kasy firmy)")) {
+            try {
+                const pName = detailsClientName ? detailsClientName.textContent : 'Zlecenie';
+                
+                // 1. Zbieramy wszystkie wydatki przypisane do tego zlecenia
+                const expensesRef = collection(db, "projects", currentProjectId, "expenses");
+                const expensesSnapshot = await getDocs(expensesRef);
+                
+                // 2. Przechodzimy przez każdy wydatek i usuwamy go z Kasy Głównej
+                expensesSnapshot.forEach(async (expDoc) => {
+                    const expData = expDoc.data();
+                    if (expData.financeId) {
+                        // Usuwamy powiązany wpis w historii finansów firmy
+                        await deleteDoc(doc(db, "company_finances", expData.financeId));
+                    }
+                    // Czyścimy "osierocony" dokument wydatku ze zlecenia
+                    await deleteDoc(doc(db, "projects", currentProjectId, "expenses", expDoc.id));
+                });
+
+                // 3. Wyrzucamy puste już zlecenie do kosza
+                const ref = doc(db, "projects", currentProjectId);
+                await moveToTrash(ref, `Całe zlecenie: ${pName}`);
+                
+                if (btnBackToDashboard) btnBackToDashboard.click(); 
+            } catch (error) {
+                console.error("Błąd podczas usuwania zlecenia:", error);
+                alert("Wystąpił problem podczas usuwania. Sprawdź konsolę.");
+            }
         }
     });
 }
