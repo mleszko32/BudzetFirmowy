@@ -839,7 +839,7 @@ if (btnScanInvoice) {
             Wymagany format: [{"name": "nazwa materiału", "price": 12.34}]`;
 
             // 2. Strzał do API Google z nowym wymuszeniem formatu JSON
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
