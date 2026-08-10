@@ -801,7 +801,7 @@ const scannerItemsContainer = document.getElementById('scanner-items-container')
 const btnSaveScannedItems = document.getElementById('btn-save-scanned-items'); // Ta zmienna musi tu zostać dla zielonego przycisku!
 
 // TUTAJ WKLEJ SWÓJ KLUCZ API GOOGLE (ten sam co w Generatorze)
-const GEMINI_API_KEY = "AQ.Ab8RN6LMR46DCsmbwdT3E0xH1w6oHzkorJNV6kFeCYGfluavlQ"; 
+const GEMINI_API_KEY = "AQ.Ab8RN6KC36sogqp3pcx_qaGYLp_Jzd05KimEP_6OxPdCShf0BA"; 
 
 // Funkcja pomocnicza: zamiana pliku graficznego na kod Base64 (żeby wysłać go do AI)
 function fileToBase64(file) {
