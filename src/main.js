@@ -791,37 +791,87 @@ if (plannedListContainer) {
     });
 }
 
-// SKANER FAKTUR
+// ==========================================
+// PRAWDZIWY SKANER FAKTUR AI (GEMINI)
+// ==========================================
 const btnScanInvoice = document.getElementById('btn-scan-invoice');
 const scannerLoading = document.getElementById('scanner-loading');
 const scannerResultsSection = document.getElementById('scanner-results-section');
 const scannerItemsContainer = document.getElementById('scanner-items-container');
-const btnSaveScannedItems = document.getElementById('btn-save-scanned-items');
+const btnSaveScannedItems = document.getElementById('btn-save-scanned-items'); // Ta zmienna musi tu zostać dla zielonego przycisku!
+
+// TUTAJ WKLEJ SWÓJ KLUCZ API GOOGLE (ten sam co w Generatorze)
+const GEMINI_API_KEY = "AQ.Ab8RN6LMR46DCsmbwdT3E0xH1w6oHzkorJNV6kFeCYGfluavlQ"; 
+
+// Funkcja pomocnicza: zamiana pliku graficznego na kod Base64 (żeby wysłać go do AI)
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.split(',')[1]); 
+        reader.onerror = error => reject(error);
+    });
+}
 
 if (btnScanInvoice) {
-    btnScanInvoice.addEventListener('click', () => {
-        const file = document.getElementById('invoice-upload-input').files[0];
-        if (!file) { alert("Najpierw zrób zdjęcie lub wybierz plik z fakturą!"); return; }
+    btnScanInvoice.addEventListener('click', async () => {
+        const fileInput = document.getElementById('invoice-upload-input');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            alert("Najpierw zrób zdjęcie lub wybierz plik z fakturą z hurtowni!");
+            return;
+        }
+        if (!GEMINI_API_KEY || GEMINI_API_KEY === "TWÓJ_KLUCZ_API_TUTAJ") {
+            alert("Nie wpisałeś klucza API w kodzie main.js!");
+            return;
+        }
 
+        // Przygotowanie interfejsu na czas myślenia AI
         scannerLoading.style.display = 'block';
+        scannerLoading.textContent = "Sztuczna inteligencja czyta fakturę... (to może potrwać do 10 sekund)";
         scannerResultsSection.classList.add('hidden');
         btnScanInvoice.disabled = true;
 
-        setTimeout(() => {
-            scannerLoading.style.display = 'none';
-            btnScanInvoice.disabled = false;
-            scannerResultsSection.classList.remove('hidden');
-            
-            const mockItems = [
-                { name: "Płyta laminowana Dąb Craft 18mm", price: 420.50 },
-                { name: "Zawias Blum Clip Top z domykiem x20", price: 340.00 },
-                { name: "Wkręty Assy 4x16 (karton)", price: 45.00 }
-            ];
+        try {
+            // 1. Konwersja zdjęcia
+            const base64Image = await fileToBase64(file);
+            const mimeType = file.type;
 
+            // 2. Twardy i precyzyjny prompt nakazujący zwrot tylko formatu JSON
+            const promptText = `Przeanalizuj to zdjęcie faktury z hurtowni stolarskiej (płyty, fronty, okucia itp.). 
+            Wypisz wszystkie pozycje materiałowe oraz ich ostateczne ceny brutto. 
+            MUSISZ zwrócić wynik TYLKO i WYŁĄCZNIE jako czysty, poprawny kod JSON (tablica obiektów), bez żadnego dodatkowego tekstu, wstępów i znaczników markdown. 
+            Wymagany format to dokładnie: [{"name": "nazwa materiału", "price": 12.34}, {"name": "inny materiał", "price": 50.00}]`;
+
+            // 3. Strzał do API Google Gemini 1.5 Flash
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: promptText },
+                            { inlineData: { mimeType: mimeType, data: base64Image } }
+                        ]
+                    }]
+                })
+            });
+
+            if (!response.ok) throw new Error("Błąd połączenia z API Google");
+
+            const data = await response.json();
+            const textResult = data.candidates[0].content.parts[0].text;
+
+            // 4. Sprzątanie odpowiedzi i wyciąganie danych
+            const cleanJson = textResult.replace(/```json/gi, '').replace(/```/g, '').trim();
+            const recognizedItems = JSON.parse(cleanJson);
+
+            // 5. Budowanie tabelki do przypisywania
             scannerItemsContainer.innerHTML = '';
             const projectOptions = activeProjectsList.map(p => `<option value="${p.id}">Zlecenie: ${p.name}</option>`).join('');
 
-            mockItems.forEach((item) => {
+            recognizedItems.forEach((item) => {
                 const itemDiv = document.createElement('div');
                 itemDiv.style = "display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px; background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px;";
                 itemDiv.innerHTML = `
@@ -838,7 +888,18 @@ if (btnScanInvoice) {
                 `;
                 scannerItemsContainer.appendChild(itemDiv);
             });
-        }, 2000);
+
+            scannerLoading.style.display = 'none';
+            scannerResultsSection.classList.remove('hidden');
+
+        } catch (error) {
+            console.error("Błąd Skanera:", error);
+            alert("AI nie poradziło sobie z tym zdjęciem lub wystąpił błąd sieci. Upewnij się, że zdjęcie jest ostre i jasne.");
+            scannerLoading.style.display = 'none';
+        } finally {
+            btnScanInvoice.disabled = false;
+            scannerLoading.textContent = "AI analizuje fakturę... to potrwa kilka sekund.";
+        }
     });
 }
 
