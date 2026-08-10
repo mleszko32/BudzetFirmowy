@@ -27,7 +27,18 @@ const loginEmailInput = document.getElementById('login-email');
 const loginPasswordInput = document.getElementById('login-password');
 const authErrorEl = document.getElementById('auth-error');
 const btnLogout = document.getElementById('btn-logout');
+// Pamięć do wyliczania prognozy
+let currentCompanyTotal = 0;
+let currentTotalPlanned = 0;
 
+function updateProjectedBalance() {
+    const projectedEl = document.getElementById('company-balance-after-planned');
+    if (projectedEl) {
+        const projected = currentCompanyTotal - currentTotalPlanned;
+        projectedEl.textContent = `${projected.toFixed(2)} zł`;
+        projectedEl.style.color = projected >= 0 ? '#38a169' : '#e53e3e'; // zielony lub czerwony
+    }
+}
 // --- ZMIENNE SYSTEMOWE ---
 let currentProjectId = null;
 let currentProjectDeposit = 0;
@@ -515,30 +526,22 @@ if (trancheForm) {
 }
 
 // --- RENDERING FINANSÓW FIRMY ---
-// --- RENDERING FINANSÓW FIRMY ---
 function renderFinancesList() {
     if (!lastFinancesSnapshot || !financeListContainer) return;
     
     financeListContainer.innerHTML = '';
     let totalCompanyMoney = 0;
-    let monthlySalarySum = 0;
     
-    const targetMonth = monthSelect ? parseInt(monthSelect.value, 10) : new Date().getMonth();
-    const targetYear = yearSelect ? parseInt(yearSelect.value, 10) : new Date().getFullYear();
-    
+    // Filtrowanie dat - pominięte dla czytelności w historii (domyślnie pokazuje wszystkie lub filtruje wg przycisków)
     const categoryTotals = {};
     let hasVisibleItems = false;
     
-    // NOWOŚĆ: Obiekt przechowujący pogrupowane operacje
-    const groupedByDate = {}; 
-
     if (lastFinancesSnapshot.empty) {
         financeListContainer.innerHTML = '<p style="color: #718096; font-size: 14px;">Brak operacji finansowych.</p>';
         if (companyTotalBalanceEl) companyTotalBalanceEl.textContent = '0.00 zł';
-        if (monthlySalaryTotalEl) monthlySalaryTotalEl.textContent = '0.00 zł';
-        const summaryListContainer = document.getElementById('monthly-summary-list');
-        if (summaryListContainer) summaryListContainer.innerHTML = '<p>Brak wydatków.</p>';
-        if (expensesChartInstance) expensesChartInstance.destroy();
+        
+        currentCompanyTotal = 0; 
+        updateProjectedBalance(); // <--- Aktualizacja prognozy
         return;
     }
 
@@ -552,18 +555,12 @@ function renderFinancesList() {
             totalCompanyMoney -= data.amount;
         }
 
-        if (data.type === 'withdrawal' && dateObj.getMonth() === targetMonth && dateObj.getFullYear() === targetYear) {
-            monthlySalarySum += data.amount;
-        }
-
-        if (data.type === 'expense' && dateObj.getMonth() === targetMonth && dateObj.getFullYear() === targetYear) {
-            const cat = data.category && data.category !== "Brak" ? data.category : "Inne / Nieprzypisane";
-            categoryTotals[cat] = (categoryTotals[cat] || 0) + data.amount;
-        }
-
         const isWithdrawal = data.type === 'withdrawal';
-        if (currentFinanceFilter === 'operations' && isWithdrawal) return; 
-        if (currentFinanceFilter === 'salary' && !isWithdrawal) return; 
+        
+        // ZASTOSOWANIE FILTRA
+        if (currentFinanceFilter === 'income' && data.type !== 'income') return;
+        if (currentFinanceFilter === 'expense' && data.type !== 'expense') return;
+        if (currentFinanceFilter === 'salary' && data.type !== 'withdrawal') return;
         
         hasVisibleItems = true;
 
@@ -585,82 +582,33 @@ function renderFinancesList() {
             sign = '-';
         }
 
-        // Przygotowujemy klucz daty (np. 10.08.2026)
-        const dateStr = dateObj.toLocaleDateString('pl-PL');
-        if (!groupedByDate[dateStr]) {
-            groupedByDate[dateStr] = [];
+        const li = document.createElement('li');
+        li.classList.add('expense-item');
+        if (data.type === 'withdrawal') {
+            li.style.borderLeft = '4px solid #805ad5';
         }
         
-        // Zapisujemy element w odpowiedniej szufladce dnia
-        groupedByDate[dateStr].push({ id: firestoreDoc.id, ...data, typeLabel, amountColor, sign });
+        li.innerHTML = `
+            <div class="expense-info">
+                <strong>${data.desc}</strong>
+                <span class="expense-date">${dateObj.toLocaleDateString('pl-PL')} | ${typeLabel}</span>
+            </div>
+            <div class="expense-actions">
+                <span class="expense-amount ${amountColor}" style="${data.type === 'withdrawal' ? 'color: #805ad5;' : ''}">${sign} ${data.amount.toFixed(2)} zł</span>
+                <button class="btn-delete finance-delete" data-id="${firestoreDoc.id}" title="Usuń wpis">🗑️</button>
+            </div>
+        `;
+        financeListContainer.appendChild(li);
     });
 
-    // RYSOWANIE POGRUPOWANYCH DANYCH
     if (!hasVisibleItems) {
         financeListContainer.innerHTML = '<p style="color: #718096; font-size: 14px;">Brak operacji dla wybranego filtru.</p>';
-    } else {
-        for (const [dateStr, items] of Object.entries(groupedByDate)) {
-            // Dodajemy nagłówek z datą
-            const dateHeader = document.createElement('div');
-            dateHeader.innerHTML = `<h4 style="margin: 20px 0 8px 0; border-bottom: 2px solid var(--border-color); padding-bottom: 4px; color: #4a5568; font-size: 13px;">📅 ${dateStr}</h4>`;
-            financeListContainer.appendChild(dateHeader);
-
-            // Wrzucamy pod niego wszystkie operacje z tego dnia
-            items.forEach(item => {
-                const li = document.createElement('li');
-                li.classList.add('expense-item');
-                if (item.type === 'withdrawal') {
-                    li.style.borderLeft = '4px solid #805ad5';
-                }
-                
-                li.innerHTML = `
-                    <div class="expense-info">
-                        <strong>${item.desc}</strong>
-                        <span class="expense-date">${item.typeLabel}</span>
-                    </div>
-                    <div class="expense-actions">
-                        <span class="expense-amount ${item.amountColor}" style="${item.type === 'withdrawal' ? 'color: #805ad5;' : ''}">${item.sign} ${item.amount.toFixed(2)} zł</span>
-                        <button class="btn-delete finance-delete" data-id="${item.id}" title="Usuń wpis">🗑️</button>
-                    </div>
-                `;
-                financeListContainer.appendChild(li);
-            });
-        }
     }
 
     if (companyTotalBalanceEl) companyTotalBalanceEl.textContent = `${totalCompanyMoney.toFixed(2)} zł`;
-    if (monthlySalaryTotalEl) monthlySalaryTotalEl.textContent = `${monthlySalarySum.toFixed(2)} zł`;
-
-    const labels = Object.keys(categoryTotals);
-    const dataValues = Object.values(categoryTotals);
-    const summaryListContainer = document.getElementById('monthly-summary-list');
-    const ctx = document.getElementById('monthly-expenses-chart');
-
-    if (expensesChartInstance) expensesChartInstance.destroy();
-
-    if (labels.length > 0 && summaryListContainer && ctx) {
-        summaryListContainer.innerHTML = labels.map((label, index) => `
-            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
-                <span>${label}</span>
-                <strong>${dataValues[index].toFixed(2)} zł</strong>
-            </div>
-        `).join('');
-
-        expensesChartInstance = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: labels,
-                datasets: [{
-                    data: dataValues,
-                    backgroundColor: ['#e53e3e', '#3182ce', '#dd6b20', '#38a169', '#805ad5', '#718096'],
-                    borderWidth: 0
-                }]
-            },
-            options: { responsive: true, plugins: { legend: { display: false } } }
-        });
-    } else if (summaryListContainer) {
-        summaryListContainer.innerHTML = '<p>Brak firmowych kosztów w tym miesiącu.</p>';
-    }
+    
+    currentCompanyTotal = totalCompanyMoney;
+    updateProjectedBalance(); // <--- Aktualizacja prognozy
 }
 
 const filterButtons = document.querySelectorAll('.filter-btn');
@@ -823,16 +771,21 @@ onAuthStateChanged(auth, (user) => {
             if (!plannedListContainer) return;
             plannedListContainer.innerHTML = '';
             
+            let tempPlannedSum = 0; // Do zliczania łącznej kwoty zaplanowanych rachunków
+
             if (snapshot.empty) {
                 plannedListContainer.innerHTML = '<p style="color: #718096; font-size: 14px;">Brak oczekujących płatności. Uff!</p>';
+                currentTotalPlanned = 0;
+                if(typeof updateProjectedBalance === 'function') updateProjectedBalance();
                 return;
             }
 
             snapshot.forEach((firestoreDoc) => {
                 const data = firestoreDoc.data();
                 const docId = firestoreDoc.id;
+                
+                tempPlannedSum += data.amount; // Zliczanie
 
-                // Weryfikacja czy termin już minął
                 const today = new Date();
                 today.setHours(0,0,0,0);
                 const dueDate = new Date(data.dueDate);
@@ -861,6 +814,10 @@ onAuthStateChanged(auth, (user) => {
                 `;
                 plannedListContainer.appendChild(li);
             });
+            
+            // Aktualizacja kafelka
+            currentTotalPlanned = tempPlannedSum;
+            if(typeof updateProjectedBalance === 'function') updateProjectedBalance();
         });
     } else {
         if (plannedUnsubscribe) plannedUnsubscribe();
