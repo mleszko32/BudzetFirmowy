@@ -7,9 +7,7 @@
   </head>
   <body>
 
-    <!-- ========================================== -->
-    <!-- PANEL LOGOWANIA (DOMYŚLNIE WIDOCZNY)       -->
-    <!-- ========================================== -->
+    <!-- PANEL LOGOWANIA -->
     <div id="auth-view" style="display: flex; justify-content: center; align-items: center; height: 100vh; background-color: var(--bg-color);">
       <div class="card" style="width: 100%; max-width: 400px; padding: 32px;">
         <h2 style="margin-bottom: 24px; text-align: center;">Panel Firmowy</h2>
@@ -28,17 +26,13 @@
       </div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- WŁAŚCIWA APLIKACIJA (DOMYŚLNIE UKRYTA)     -->
-    <!-- ========================================== -->
+    <!-- GŁÓWNA APLIKACJA -->
     <div id="main-app-container" class="app-container hidden">
       
-      <!-- Górny pasek z wylogowaniem -->
       <div style="display: flex; justify-content: flex-end; margin-bottom: 12px;">
         <button id="btn-logout" class="btn" style="background: #e2e8f0; color: #2d3748; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold;">Wyloguj się</button>
       </div>
 
-      <!-- GŁÓWNE MENU -->
       <nav class="main-nav card">
         <button class="nav-btn active" id="tab-projects">Moje zlecenia</button>
         <button class="nav-btn" id="tab-finances">Finanse firmy</button>
@@ -88,7 +82,6 @@
       <div id="project-details-view" class="hidden">
         <header class="client-header">
           <button class="btn-back" id="btn-back-to-dashboard">← Wróć do listy zleceń</button>
-          
           <div class="client-title" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 12px; flex-wrap: wrap; gap: 12px;">
             <div style="display: flex; align-items: center; gap: 12px;">
               <h1 id="details-client-name">Ładowanie...</h1>
@@ -147,7 +140,6 @@
                 <button type="submit" class="btn btn-primary">Dodaj do kosztów</button>
               </form>
             </section>
-
             <section class="card form-section" style="margin-bottom: 0;">
               <h2>Dodaj kolejną wpłatę (transzę)</h2>
               <form id="tranche-form">
@@ -159,7 +151,6 @@
               </form>
             </section>
           </div>
-
           <section class="card list-section">
             <h2>Historia kosztów materiałowych</h2>
             <ul class="expense-list" id="expense-list-container"></ul>
@@ -298,8 +289,8 @@
           </section>
 
           <section id="scanner-results-section" class="card list-section hidden" style="border-top: 4px solid #805ad5;">
-            <h2 style="color: #553c9a;">Rozpoznane pozycje (Symulacja)</h2>
-            <p style="font-size: 13px; color: #718096; margin-bottom: 16px;">Przypisz każdą pozycję do konkretnego zlecenia lub wrzuć w ogólne koszty warsztatowe.</p>
+            <h2 style="color: #553c9a;">Rozpoznane pozycje</h2>
+            <p style="font-size: 13px; color: #718096; margin-bottom: 16px;">Przypisz pozycje do zleceń lub pomiń te niepotrzebne.</p>
             <div id="scanner-items-container" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px;"></div>
             <button id="btn-save-scanned-items" class="btn btn-primary" style="width: 100%; background-color: #38a169; border-color: #38a169;">Zaksięguj przypisane pozycje</button>
           </section>
@@ -316,6 +307,19 @@
               <p style="font-size: 14px; color: #718096;">Twój kosz jest pusty.</p>
             </ul>
           </section>
+        </div>
+      </div>
+
+      <!-- MODAL (OKIENKO) DO PODGLĄDU ZDJĘCIA FAKTURY -->
+      <div id="invoice-modal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;">
+        <div style="background: white; padding: 16px; border-radius: 8px; width: 100%; max-width: 800px; max-height: 95vh; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="margin: 0; color: #2d3748;">Podgląd faktury</h3>
+            <button id="close-invoice-modal" style="background: #e2e8f0; border: none; border-radius: 50%; width: 36px; height: 36px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;">❌</button>
+          </div>
+          <div style="overflow: auto; flex: 1; display: flex; justify-content: center; align-items: flex-start; background: #f8fafc; border-radius: 4px; padding: 8px;">
+            <img id="invoice-modal-img" src="" alt="Faktura" style="max-width: 100%; object-fit: contain;">
+          </div>
         </div>
       </div>
 

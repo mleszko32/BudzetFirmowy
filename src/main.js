@@ -1,8 +1,9 @@
 import './style.css';
 import { initializeApp } from "firebase/app";
-// Dodane nowe funkcje do obsługi Kosza: getDoc i setDoc
 import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, doc, updateDoc, getDoc, setDoc, getDocs } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, updatePassword } from "firebase/auth";
+// DODANE: Obsługa magazynu plików do zapisu zdjęć faktur
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import Chart from 'chart.js/auto'; 
 
 // 1. FIREBASE CONFIG
@@ -18,6 +19,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app); // INICJALIZACJA DYSKU FIREBASE
 
 // --- ZMIENNE SYSTEMOWE I PAMIĘĆ ---
 const authView = document.getElementById('auth-view');
@@ -48,12 +50,12 @@ const dashboardView = document.getElementById('dashboard-view');
 const projectDetailsView = document.getElementById('project-details-view');
 const financesView = document.getElementById('finances-view');
 const scannerView = document.getElementById('scanner-view');
-const trashView = document.getElementById('trash-view'); // NOWOŚĆ: Kosz
+const trashView = document.getElementById('trash-view'); 
 
 const tabProjects = document.getElementById('tab-projects');
 const tabFinances = document.getElementById('tab-finances');
 const tabScanner = document.getElementById('tab-scanner');
-const tabTrash = document.getElementById('tab-trash'); // NOWOŚĆ: Kosz
+const tabTrash = document.getElementById('tab-trash'); 
 
 const newProjectForm = document.getElementById('new-project-form');
 const projectsListContainer = document.getElementById('projects-list-container');
@@ -80,18 +82,15 @@ const trancheAmountInput = document.getElementById('tranche-amount');
 const financeForm = document.getElementById('finance-form');
 const financeListContainer = document.getElementById('finance-list-container');
 const companyTotalBalanceEl = document.getElementById('company-total-balance');
-const monthlySalaryTotalEl = document.getElementById('monthly-salary-total'); 
 const monthSelect = document.getElementById('finance-month'); 
 const yearSelect = document.getElementById('finance-year'); 
 
-let expensesChartInstance = null; 
 let lastFinancesSnapshot = null; 
 let currentFinanceFilter = 'all'; 
 
 // ==========================================
 // FUNKCJE AWARYJNE: KOSZ I PRZYWRACANIE
 // ==========================================
-// Funkcja przenosząca dowolny element do nowej kolekcji Kosza
 async function moveToTrash(docRef, description, linkedFinanceId = null) {
     try {
         const snap = await getDoc(docRef);
@@ -106,24 +105,20 @@ async function moveToTrash(docRef, description, linkedFinanceId = null) {
             linkedFinanceData: null
         };
 
-        // Naprawa błędu synchronizacji: Jeśli usuwamy wydatek ze zlecenia, sprawdzamy czy ma on wpis w kasie!
         if (linkedFinanceId) {
             const finRef = doc(db, "company_finances", linkedFinanceId);
             const finSnap = await getDoc(finRef);
             if (finSnap.exists()) {
                 trashData.linkedFinancePath = finRef.path;
                 trashData.linkedFinanceData = finSnap.data();
-                await deleteDoc(finRef); // Usunięcie pociąga za sobą wpis w kasie
+                await deleteDoc(finRef); 
             }
         }
-
-        // Zapis do bezpiecznego kosza i usunięcie oryginału
         await addDoc(collection(db, "trash"), trashData);
         await deleteDoc(docRef);
     } catch(err) { console.error("Błąd przenoszenia do kosza:", err); }
 }
 
-// Funkcja przywracająca element z Kosza na właściwe miejsce
 async function restoreFromTrash(trashDocId) {
     try {
         const trashRef = doc(db, "trash", trashDocId);
@@ -131,20 +126,14 @@ async function restoreFromTrash(trashDocId) {
         if (!snap.exists()) return;
 
         const data = snap.data();
-        
-        // Odtwarzamy oryginał na dokładnej ścieżce, z której zniknął
         await setDoc(doc(db, data.originalPath), data.originalData);
 
-        // Odtwarzamy wpis w kasie, jeśli taki był powiązany z wydatkiem
         if (data.linkedFinancePath && data.linkedFinanceData) {
             await setDoc(doc(db, data.linkedFinancePath), data.linkedFinanceData);
         }
-
-        // Czyścimy kosz
         await deleteDoc(trashRef);
     } catch(err) { console.error("Błąd przywracania z kosza:", err); }
 }
-
 
 function updateProjectedBalance() {
     const projectedEl = document.getElementById('company-balance-after-planned');
@@ -156,6 +145,26 @@ function updateProjectedBalance() {
 }
 
 // ==========================================
+// GLOBALE ZDARZENIA (PODGLĄD FAKTURY)
+// ==========================================
+document.addEventListener('click', (e) => {
+    if (e.target.closest('.btn-view-invoice')) {
+        const url = e.target.closest('.btn-view-invoice').getAttribute('data-url');
+        const modal = document.getElementById('invoice-modal');
+        const img = document.getElementById('invoice-modal-img');
+        if(modal && img) {
+            img.src = url;
+            modal.classList.remove('hidden');
+        }
+    }
+});
+document.getElementById('close-invoice-modal')?.addEventListener('click', () => {
+    document.getElementById('invoice-modal').classList.add('hidden');
+    document.getElementById('invoice-modal-img').src = '';
+});
+
+
+// ==========================================
 // 0. AUTORYZACJA (LOGOWANIE / WYLOGOWANIE)
 // ==========================================
 onAuthStateChanged(auth, (user) => {
@@ -163,7 +172,7 @@ onAuthStateChanged(auth, (user) => {
         if (authView) authView.classList.add('hidden');
         if (mainAppContainer) mainAppContainer.classList.remove('hidden');
         initApp();
-        initTrashListener(); // Startujemy nasłuchiwanie kosza
+        initTrashListener(); 
     } else {
         if (authView) authView.classList.remove('hidden');
         if (mainAppContainer) mainAppContainer.classList.add('hidden');
@@ -180,10 +189,8 @@ if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (authErrorEl) authErrorEl.style.display = 'none';
-
         const email = loginEmailInput ? loginEmailInput.value : '';
         const password = loginPasswordInput ? loginPasswordInput.value : '';
-
         try {
             await signInWithEmailAndPassword(auth, email, password);
             loginForm.reset();
@@ -206,8 +213,6 @@ if (btnLogout) {
 // GŁÓWNA INICJALIZACJA DANYCH
 // ==========================================
 function initApp() {
-    
-    // --- FUNKCJA ZMIENIAJĄCA ZAKŁADKI ---
     const switchTab = (activeTabBtn, activeView) => {
         [tabProjects, tabFinances, tabScanner, tabTrash].forEach(btn => {
             if(btn) btn.classList.remove('active');
@@ -218,7 +223,6 @@ function initApp() {
         if(activeTabBtn) activeTabBtn.classList.add('active');
         if(activeView) activeView.classList.remove('hidden');
         
-        // Resetowanie widoku zlecenia przy wychodzeniu
         if(activeView !== projectDetailsView) {
             if (expensesUnsubscribe) expensesUnsubscribe();
             if (projectUnsubscribe) projectUnsubscribe();
@@ -294,7 +298,6 @@ function initApp() {
                 hasActive = true;
             }
 
-            // Szybkie odpytanie o wydatki dla kafelka
             onSnapshot(collection(db, "projects", projectId, "expenses"), (expSnap) => {
                 let sum = 0;
                 expSnap.forEach(e => sum += e.data().cost);
@@ -316,7 +319,6 @@ function initApp() {
         if (receivablesEl) receivablesEl.textContent = `${totalReceivables.toFixed(2)} zł`;
     });
 
-    // --- FINANSE FIRMY ---
     const financesRef = collection(db, "company_finances");
     const financesQuery = query(financesRef, orderBy("createdAt", "desc"));
 
@@ -410,7 +412,7 @@ if (btnArchiveProject) {
     });
 }
 
-// Zabezpieczenie usuwania zlecenia (Przeniesienie do kosza i kaskadowe usuwanie kosztów)
+// Zabezpieczenie usuwania zlecenia i wycofywania kaskadowego
 if (btnDeleteProject) {
     btnDeleteProject.addEventListener('click', async () => {
         if(!currentProjectId) return;
@@ -419,22 +421,17 @@ if (btnDeleteProject) {
             try {
                 const pName = detailsClientName ? detailsClientName.textContent : 'Zlecenie';
                 
-                // 1. Zbieramy wszystkie wydatki przypisane do tego zlecenia
                 const expensesRef = collection(db, "projects", currentProjectId, "expenses");
                 const expensesSnapshot = await getDocs(expensesRef);
                 
-                // 2. Przechodzimy przez każdy wydatek i usuwamy go z Kasy Głównej
                 expensesSnapshot.forEach(async (expDoc) => {
                     const expData = expDoc.data();
                     if (expData.financeId) {
-                        // Usuwamy powiązany wpis w historii finansów firmy
                         await deleteDoc(doc(db, "company_finances", expData.financeId));
                     }
-                    // Czyścimy "osierocony" dokument wydatku ze zlecenia
                     await deleteDoc(doc(db, "projects", currentProjectId, "expenses", expDoc.id));
                 });
 
-                // 3. Wyrzucamy puste już zlecenie do kosza
                 const ref = doc(db, "projects", currentProjectId);
                 await moveToTrash(ref, `Całe zlecenie: ${pName}`);
                 
@@ -461,6 +458,10 @@ function loadExpensesForProject(projectId) {
             totalSum += data.cost;
             const dateObj = data.createdAt ? data.createdAt.toDate() : new Date();
 
+            // NOWOŚĆ: Przycisk zdjęcia faktury
+            const invoiceBtn = data.invoiceUrl ? 
+                `<button class="btn btn-view-invoice" data-url="${data.invoiceUrl}" title="Zobacz skan faktury" style="background-color: transparent; border: 1px solid #cbd5e0; border-radius: 4px; padding: 2px 6px; cursor: pointer;">🖼️</button>` : '';
+
             const li = document.createElement('li');
             li.classList.add('expense-item');
             li.innerHTML = `
@@ -468,9 +469,9 @@ function loadExpensesForProject(projectId) {
                     <strong>${data.name}</strong>
                     <span class="expense-date">${dateObj.toLocaleDateString('pl-PL')}</span>
                 </div>
-                <div class="expense-actions">
+                <div class="expense-actions" style="display: flex; align-items: center; gap: 8px;">
                     <span class="expense-amount text-red">- ${data.cost.toFixed(2)} zł</span>
-                    <!-- Tu jest klucz do synchronizacji - przycisk pamięta o kasie! -->
+                    ${invoiceBtn}
                     <button class="btn-delete" data-id="${firestoreDoc.id}" data-finance-id="${data.financeId || ''}" title="Przenieś do kosza">🗑️</button>
                 </div>
             `;
@@ -479,7 +480,6 @@ function loadExpensesForProject(projectId) {
 
         currentTotalExpenses = totalSum; 
         if (totalExpensesEl) totalExpensesEl.textContent = `${totalSum.toFixed(2)} zł`;
-        
         const balance = currentProjectDeposit - totalSum;
         if (currentBalanceEl) currentBalanceEl.textContent = `${balance.toFixed(2)} zł`;
 
@@ -503,19 +503,12 @@ if (newProjectForm) {
 
         try {
             await addDoc(collection(db, "projects"), {
-                name: name,
-                total: total,
-                deposit: deposit,
-                status: 'active', 
-                createdAt: new Date()
+                name: name, total: total, deposit: deposit, status: 'active', createdAt: new Date()
             });
 
             if (deposit > 0) {
                 await addDoc(collection(db, "company_finances"), {
-                    type: 'income',
-                    desc: `Zaliczka na start (Zlecenie: ${name})`,
-                    amount: deposit,
-                    createdAt: new Date()
+                    type: 'income', desc: `Zaliczka na start (Zlecenie: ${name})`, amount: deposit, createdAt: new Date()
                 });
             }
             newProjectForm.reset();
@@ -523,7 +516,6 @@ if (newProjectForm) {
     });
 }
 
-// Zapis wydatku wraz z powiązaniem (Fix błędu synchronizacji)
 if (expenseForm) {
     expenseForm.addEventListener('submit', async (e) => {
         e.preventDefault(); 
@@ -531,26 +523,16 @@ if (expenseForm) {
 
         const name = expenseNameInput.value;
         const cost = parseFloat(expenseCostInput.value);
-        
         if (!name || isNaN(cost)) return;
 
         try {
             const projectName = detailsClientName ? detailsClientName.textContent : ''; 
-            
-            // 1. NAJPIERW ZAPISUJEMY W KASIE GŁÓWNEJ I ZBIERAMY DOWÓD (ID)
             const financeRef = await addDoc(collection(db, "company_finances"), {
-                type: 'expense',
-                desc: `Koszt zlecenia (${projectName}): ${name}`,
-                amount: cost,
-                createdAt: new Date()
+                type: 'expense', desc: `Koszt zlecenia (${projectName}): ${name}`, amount: cost, createdAt: new Date()
             });
 
-            // 2. POTEM ZAPISUJEMY W ZLECENIU WKLEJAJĄC TAM DOWÓD Z KASY
             await addDoc(collection(db, "projects", currentProjectId, "expenses"), {
-                name: name,
-                cost: cost,
-                financeId: financeRef.id, // Magiczne powiązanie!
-                createdAt: new Date()
+                name: name, cost: cost, financeId: financeRef.id, createdAt: new Date()
             });
 
             expenseForm.reset();
@@ -558,17 +540,15 @@ if (expenseForm) {
     });
 }
 
-// Usuwanie wydatku z wykorzystaniem Kosza
 if (expenseListContainer) {
     expenseListContainer.addEventListener('click', async (e) => {
         if (e.target.classList.contains('btn-delete') && currentProjectId) {
             const expenseId = e.target.getAttribute('data-id');
-            const financeId = e.target.getAttribute('data-finance-id'); // Sprawdzamy czy ma brata w kasie
+            const financeId = e.target.getAttribute('data-finance-id'); 
             
             if(confirm("Przenieść wydatek do kosza? (Środki wrócą na stan firmy)")) {
                 const docRef = doc(db, "projects", currentProjectId, "expenses", expenseId);
                 const expenseName = e.target.closest('li').querySelector('strong').innerText;
-                
                 await moveToTrash(docRef, `Wydatek ze zlecenia: ${expenseName}`, financeId);
             }
         }
@@ -579,28 +559,21 @@ if (trancheForm) {
     trancheForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!currentProjectId) return;
-
         const amount = parseFloat(trancheAmountInput.value);
         if (isNaN(amount) || amount <= 0) return;
 
         try {
             const newDeposit = currentProjectDeposit + amount;
             await updateDoc(doc(db, "projects", currentProjectId), { deposit: newDeposit });
-
             const projectName = detailsClientName ? detailsClientName.textContent : '';
             await addDoc(collection(db, "company_finances"), {
-                type: 'income',
-                desc: `Kolejna transza (Zlecenie: ${projectName})`,
-                amount: amount,
-                createdAt: new Date()
+                type: 'income', desc: `Kolejna transza (Zlecenie: ${projectName})`, amount: amount, createdAt: new Date()
             });
-
             trancheForm.reset();
         } catch (error) { console.error(error); }
     });
 }
 
-// --- RENDERING FINANSÓW FIRMY ---
 function renderFinancesList() {
     if (!lastFinancesSnapshot || !financeListContainer) return;
     financeListContainer.innerHTML = '';
@@ -636,6 +609,10 @@ function renderFinancesList() {
         else if (data.type === 'expense') { typeLabel = data.category && data.category !== "Brak" ? `Koszt: ${data.category}` : 'Koszt firmowy'; amountColor = 'text-red'; sign = '-'; } 
         else { typeLabel = 'Wypłata własna'; amountColor = 'text-purple'; sign = '-'; }
 
+        // Ikonka ze zdjęciem
+        const invoiceBtn = data.invoiceUrl ? 
+            `<button class="btn btn-view-invoice" data-url="${data.invoiceUrl}" title="Zobacz skan faktury" style="background-color: transparent; border: 1px solid #cbd5e0; border-radius: 4px; padding: 2px 6px; cursor: pointer;">🖼️</button>` : '';
+
         const li = document.createElement('li');
         li.classList.add('expense-item');
         if (data.type === 'withdrawal') li.style.borderLeft = '4px solid #805ad5';
@@ -645,8 +622,9 @@ function renderFinancesList() {
                 <strong>${data.desc}</strong>
                 <span class="expense-date">${dateObj.toLocaleDateString('pl-PL')} | ${typeLabel}</span>
             </div>
-            <div class="expense-actions">
+            <div class="expense-actions" style="display: flex; align-items: center; gap: 8px;">
                 <span class="expense-amount ${amountColor}" style="${data.type === 'withdrawal' ? 'color: #805ad5;' : ''}">${sign} ${data.amount.toFixed(2)} zł</span>
+                ${invoiceBtn}
                 <button class="btn-delete finance-delete" data-id="${firestoreDoc.id}" title="Przenieś do kosza">🗑️</button>
             </div>
         `;
@@ -667,12 +645,10 @@ filterButtons.forEach(btn => {
             b.style.background = 'var(--bg-color)';
             b.style.color = 'inherit';
         });
-        
         const clickedBtn = e.currentTarget;
         clickedBtn.classList.add('active');
         clickedBtn.style.background = 'var(--primary-color)';
         clickedBtn.style.color = 'white';
-        
         currentFinanceFilter = clickedBtn.getAttribute('data-filter');
         renderFinancesList();
     });
@@ -685,12 +661,9 @@ if (financeForm) {
         const category = document.getElementById('finance-category').value;
         const desc = document.getElementById('finance-desc').value;
         const amount = parseFloat(document.getElementById('finance-amount').value);
-
         if (!desc || isNaN(amount)) return;
         try {
-            await addDoc(collection(db, "company_finances"), {
-                type: type, category: category || "Brak", desc: desc, amount: amount, createdAt: new Date()
-            });
+            await addDoc(collection(db, "company_finances"), { type: type, category: category || "Brak", desc: desc, amount: amount, createdAt: new Date() });
             financeForm.reset();
         } catch (error) { console.error(error); }
     });
@@ -717,12 +690,10 @@ if (btnEditTotal) {
         if (newVal === null) return; 
         const parsedVal = parseFloat(newVal);
         if (isNaN(parsedVal) || parsedVal < 0) { alert("Podano nieprawidłową kwotę."); return; }
-        try { await updateDoc(doc(db, "projects", currentProjectId), { total: parsedVal }); } 
-        catch (error) { console.error(error); }
+        try { await updateDoc(doc(db, "projects", currentProjectId), { total: parsedVal }); } catch (error) { console.error(error); }
     });
 }
 
-// PLANOWANE WYDATKI
 const plannedExpenseForm = document.getElementById('planned-expense-form');
 const plannedListContainer = document.getElementById('planned-list-container');
 let plannedUnsubscribe = null;
@@ -736,20 +707,16 @@ onAuthStateChanged(auth, (user) => {
             if (!plannedListContainer) return;
             plannedListContainer.innerHTML = '';
             let tempPlannedSum = 0; 
-
             if (snapshot.empty) {
                 plannedListContainer.innerHTML = '<p style="color: #718096; font-size: 14px;">Brak oczekujących płatności. Uff!</p>';
                 currentTotalPlanned = 0;
                 if(typeof updateProjectedBalance === 'function') updateProjectedBalance();
                 return;
             }
-
             snapshot.forEach((firestoreDoc) => {
                 const data = firestoreDoc.data();
                 const docId = firestoreDoc.id;
-                
                 tempPlannedSum += data.amount; 
-
                 const today = new Date();
                 today.setHours(0,0,0,0);
                 const dueDate = new Date(data.dueDate);
@@ -822,12 +789,11 @@ const btnScanInvoice = document.getElementById('btn-scan-invoice');
 const scannerLoading = document.getElementById('scanner-loading');
 const scannerResultsSection = document.getElementById('scanner-results-section');
 const scannerItemsContainer = document.getElementById('scanner-items-container');
-const btnSaveScannedItems = document.getElementById('btn-save-scanned-items'); // Ta zmienna musi tu zostać dla zielonego przycisku!
+const btnSaveScannedItems = document.getElementById('btn-save-scanned-items'); 
 
-// TUTAJ WKLEJ SWÓJ KLUCZ API GOOGLE (ten sam co w Generatorze)
-const GEMINI_API_KEY = "AQ.Ab8RN6KC36sogqp3pcx_qaGYLp_Jzd05KimEP_6OxPdCShf0BA"; 
+// KLUCZ API:
+const GEMINI_API_KEY = "TWÓJ_KLUCZ_API_TUTAJ"; 
 
-// Funkcja pomocnicza: zamiana pliku graficznego na kod Base64 (żeby wysłać go do AI)
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -842,18 +808,15 @@ if (btnScanInvoice) {
         const fileInput = document.getElementById('invoice-upload-input');
         const file = fileInput.files[0];
         
-        if (!file) {
-            alert("Najpierw zrób zdjęcie lub wybierz plik z fakturą!");
-            return;
-        }
+        if (!file) { alert("Najpierw zrób zdjęcie lub wybierz plik z fakturą!"); return; }
+        if (!GEMINI_API_KEY || GEMINI_API_KEY === "TWÓJ_KLUCZ_API_TUTAJ") { alert("Wpisz klucz API Google!"); return; }
 
         scannerLoading.style.display = 'block';
-        scannerLoading.textContent = "Sztuczna inteligencja czyta fakturę... (to może potrwać do 10 sekund)";
+        scannerLoading.textContent = "Sztuczna inteligencja analizuje dokument...";
         scannerResultsSection.classList.add('hidden');
         btnScanInvoice.disabled = true;
 
         try {
-            // 1. Konwersja zdjęcia (z zabezpieczeniem formatu dla iPhone'ów)
             const base64Image = await fileToBase64(file);
             const mimeType = file.type || "image/jpeg"; 
 
@@ -862,40 +825,56 @@ if (btnScanInvoice) {
             MUSISZ zwrócić wynik w formacie JSON jako tablicę obiektów.
             Wymagany format: [{"name": "nazwa materiału", "price": 12.34}]`;
 
-            // 2. Strzał do API Google z nowym wymuszeniem formatu JSON
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            { text: promptText },
-                            { inlineData: { mimeType: mimeType, data: base64Image } }
-                        ]
-                    }],
-                    // To zmusza Google do idealnie czystego kodu
-                    generationConfig: {
-                        responseMimeType: "application/json"
-                    }
+                    contents: [{ parts: [{ text: promptText }, { inlineData: { mimeType: mimeType, data: base64Image } }] }],
+                    generationConfig: { responseMimeType: "application/json" }
                 })
             });
 
-            // 3. Sprawdzamy czy Google nie zablokowało zapytania
             if (!response.ok) {
                 const errData = await response.json();
-                // Wyrzucamy prawdziwy komunikat od Google
                 throw new Error(errData.error?.message || `Błąd sieciowy: kod ${response.status}`);
             }
 
             const data = await response.json();
-            
-            // 4. Odczytujemy i budujemy tabelkę
             const textResult = data.candidates[0].content.parts[0].text;
             const recognizedItems = JSON.parse(textResult);
 
             scannerItemsContainer.innerHTML = '';
+            
+            // 1. Zbiór opcji do dropdownów (Zlecenia, Koszty Firmowe, Opcja 'Pomiń')
             const projectOptions = activeProjectsList.map(p => `<option value="${p.id}">Zlecenie: ${p.name}</option>`).join('');
+            const allOptions = `
+                <option value="company_expense">Koszty ogólne warsztatu</option>
+                ${projectOptions}
+                <option value="ignore" style="color: #e53e3e; font-weight: bold;">-- Nie dodawaj (Pomiń) --</option>
+            `;
 
+            // 2. NOWOŚĆ: PASEK MASOWEGO PRZYPISYWANIA
+            const bulkDiv = document.createElement('div');
+            bulkDiv.style = "margin-bottom: 16px; padding: 12px; background: #ebf8ff; border: 1px solid #90cdf4; border-radius: 8px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;";
+            bulkDiv.innerHTML = `
+                <strong style="color: #2b6cb0;">Zastosuj do wszystkich pozycji:</strong>
+                <select id="bulk-assign-select" style="flex: 1; min-width: 200px; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+                    <option value="" disabled selected>-- Wybierz gdzie wrzucić całą fakturę --</option>
+                    ${allOptions}
+                </select>
+            `;
+            scannerItemsContainer.appendChild(bulkDiv);
+
+            // Mechanizm masowej zmiany opcji
+            const bulkSelect = bulkDiv.querySelector('#bulk-assign-select');
+            bulkSelect.addEventListener('change', (e) => {
+                const val = e.target.value;
+                if (!val) return;
+                const itemSelects = document.querySelectorAll('.scanned-item-assign');
+                itemSelects.forEach(sel => sel.value = val);
+            });
+
+            // 3. Budowanie kafelków z produktami
             recognizedItems.forEach((item) => {
                 const itemDiv = document.createElement('div');
                 itemDiv.style = "display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px; background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px;";
@@ -906,8 +885,8 @@ if (btnScanInvoice) {
                     </div>
                     <div style="flex: 1; min-width: 200px;">
                         <select class="scanned-item-assign" data-name="${item.name}" data-price="${item.price}" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
-                            <option value="company_expense">Koszty ogólne warsztatu</option>
-                            ${projectOptions}
+                            <option value="" disabled selected>-- Wybierz zlecenie / opcję --</option>
+                            ${allOptions}
                         </select>
                     </div>
                 `;
@@ -918,46 +897,76 @@ if (btnScanInvoice) {
             scannerResultsSection.classList.remove('hidden');
 
         } catch (error) {
-            console.error("Błąd Skanera:", error);
-            // TUTAJ MAGIA: Wyświetlamy konkretny powód wysypania się błędu!
             alert("Błąd: " + error.message);
             scannerLoading.style.display = 'none';
         } finally {
             btnScanInvoice.disabled = false;
-            scannerLoading.textContent = "AI analizuje fakturę... to potrwa kilka sekund.";
+            scannerLoading.textContent = "AI analizuje dokument...";
         }
     });
 }
 
-// ZAPISYWANIE ROZPOZNANYCH POZYCJI (WRAZ Z WDROŻONYM LINKOWANIEM KASY)
+// NOWOŚĆ: KSIĘGOWANIE WRAZ Z PRZESYŁANIEM ZDJĘCIA I POMIJANIEM WYDATKÓW
 if (btnSaveScannedItems) {
     btnSaveScannedItems.addEventListener('click', async () => {
         const selects = document.querySelectorAll('.scanned-item-assign');
         if (selects.length === 0) return;
 
+        // Walidacja: sprawdza czy wszystko zostało wypełnione przed wysyłką do bazy
+        let allAssigned = true;
+        selects.forEach(s => { if(s.value === "") allAssigned = false; });
+        
+        if(!allAssigned) {
+            alert("Niektóre pozycje nie są przypisane! Wybierz zlecenie lub zaznacz 'Pomiń', aby kontynuować.");
+            return;
+        }
+
         btnSaveScannedItems.disabled = true;
         const originalText = btnSaveScannedItems.textContent;
-        btnSaveScannedItems.textContent = "Księgowanie w tle...";
+        btnSaveScannedItems.textContent = "Księgowanie i zapisywanie zdjęcia w tle...";
 
         try {
+            const fileInput = document.getElementById('invoice-upload-input');
+            const file = fileInput.files[0];
+            let uploadedUrl = null;
+
+            // Wgrywanie zdjęcia do bazy Firebase Storage
+            if (file) {
+                const fileExt = file.name.split('.').pop();
+                const fileName = `faktury/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                const fileStorageRef = storageRef(storage, fileName);
+                
+                await uploadBytes(fileStorageRef, file);
+                uploadedUrl = await getDownloadURL(fileStorageRef);
+            }
+
             for (const select of selects) {
+                const targetId = select.value;
                 const itemName = select.getAttribute('data-name');
                 const itemPrice = parseFloat(select.getAttribute('data-price'));
-                const targetId = select.value;
+                
+                // Sprytna instrukcja przerywająca pętlę i pomijająca ten konkretny przedmiot z faktury
+                if (targetId === 'ignore') continue;
 
                 if (targetId === 'company_expense') {
                     await addDoc(collection(db, "company_finances"), {
-                        type: 'expense', category: 'Materiały ogólne', desc: `Faktura (Skaner AI): ${itemName}`, amount: itemPrice, createdAt: new Date()
+                        type: 'expense', category: 'Materiały ogólne', desc: `Faktura (Skaner AI): ${itemName}`, amount: itemPrice, 
+                        invoiceUrl: uploadedUrl, // Doklejamy link do zdjęcia
+                        createdAt: new Date()
                     });
                 } else {
                     const projectName = select.options[select.selectedIndex].text.replace('Zlecenie: ', '');
+                    
                     const financeRef = await addDoc(collection(db, "company_finances"), {
-                        type: 'expense', desc: `Koszt zlecenia (${projectName}): ${itemName}`, amount: itemPrice, createdAt: new Date()
+                        type: 'expense', desc: `Koszt zlecenia (${projectName}): ${itemName}`, amount: itemPrice, 
+                        invoiceUrl: uploadedUrl, // Doklejamy link
+                        createdAt: new Date()
                     });
                     
-                    // Magiczne powiązanie wydatku z jego odbiciem w kasie!
                     await addDoc(collection(db, "projects", targetId, "expenses"), {
-                        name: itemName, cost: itemPrice, financeId: financeRef.id, createdAt: new Date()
+                        name: itemName, cost: itemPrice, financeId: financeRef.id, 
+                        invoiceUrl: uploadedUrl, // Doklejamy link
+                        createdAt: new Date()
                     });
                 }
             }
@@ -966,14 +975,16 @@ if (btnSaveScannedItems) {
             document.getElementById('scanner-results-section').classList.add('hidden');
             document.getElementById('invoice-upload-input').value = '';
             if (tabProjects) tabProjects.click();
-        } catch (error) { console.error(error); } 
-        finally { btnSaveScannedItems.disabled = false; btnSaveScannedItems.textContent = originalText; }
+        } catch (error) { 
+            console.error(error); 
+            alert("Błąd podczas wgrywania faktury.");
+        } finally { 
+            btnSaveScannedItems.disabled = false; 
+            btnSaveScannedItems.textContent = originalText; 
+        }
     });
 }
 
-// ==========================================
-// NASŁUCHIWANIE I OBSŁUGA KOSZA
-// ==========================================
 function initTrashListener() {
     const trashRef = collection(db, "trash");
     const trashQ = query(trashRef, orderBy("deletedAt", "desc"));
@@ -982,7 +993,6 @@ function initTrashListener() {
     trashUnsubscribe = onSnapshot(trashQ, (snapshot) => {
         if (!container) return;
         container.innerHTML = '';
-        
         if (snapshot.empty) {
             container.innerHTML = '<p style="color: #718096; font-size: 14px;">Twój kosz jest pusty.</p>';
             return;
@@ -991,7 +1001,6 @@ function initTrashListener() {
         snapshot.forEach((firestoreDoc) => {
             const data = firestoreDoc.data();
             const dateObj = data.deletedAt ? data.deletedAt.toDate() : new Date();
-            
             const li = document.createElement('li');
             li.classList.add('expense-item');
             li.innerHTML = `
