@@ -8,7 +8,7 @@ import Chart from 'chart.js/auto';
 
 // 1. FIREBASE CONFIG
 const firebaseConfig = {
-  apiKey: "AQ.Ab8RN6KC36sogqp3pcx_qaGYLp_Jzd05KimEP_6OxPdCShf0BA",
+  apiKey: "AIzaSyCSE0dGsBBWkzV1Ceuw9GeMJB520UvVHaY",
   authDomain: "budzetfirmowy-3dd46.firebaseapp.com",
   projectId: "budzetfirmowy-3dd46",
   storageBucket: "budzetfirmowy-3dd46.firebasestorage.app",
@@ -792,7 +792,7 @@ const scannerItemsContainer = document.getElementById('scanner-items-container')
 const btnSaveScannedItems = document.getElementById('btn-save-scanned-items'); 
 
 // KLUCZ API:
-const GEMINI_API_KEY = "TWÓJ_KLUCZ_API_TUTAJ"; 
+const GEMINI_API_KEY = "AQ.Ab8RN6KC36sogqp3pcx_qaGYLp_Jzd05KimEP_6OxPdCShf0BA"; 
 
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
