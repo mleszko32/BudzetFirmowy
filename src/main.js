@@ -791,8 +791,7 @@ const scannerResultsSection = document.getElementById('scanner-results-section')
 const scannerItemsContainer = document.getElementById('scanner-items-container');
 const btnSaveScannedItems = document.getElementById('btn-save-scanned-items'); 
 
-// KLUCZ API:
-const GEMINI_API_KEY = "AQ.Ab8RN6KC36sogqp3pcx_qaGYLp_Jzd05KimEP_6OxPdCShf0BA"; 
+
 
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
@@ -825,33 +824,23 @@ if (btnScanInvoice) {
             MUSISZ zwrócić wynik w formacie JSON jako tablicę obiektów.
             Wymagany format: [{"name": "nazwa materiału", "price": 12.34}]`;
 
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
+            // Wysyłamy zdjęcie do NASZEGO ukrytego serwera na Vercelu
+            const response = await fetch('/api/scan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: promptText }, { inlineData: { mimeType: mimeType, data: base64Image } }] }],
-                    generationConfig: { responseMimeType: "application/json" }
-                })
+                body: JSON.stringify({ base64Image: base64Image, mimeType: mimeType })
             });
 
             if (!response.ok) {
                 const errData = await response.json();
-                throw new Error(errData.error?.message || `Błąd sieciowy: kod ${response.status}`);
+                throw new Error(errData.error || `Błąd serwera: ${response.status}`);
             }
 
             const data = await response.json();
+            
+            // Odczytanie czystego JSONa bezpośrednio z serwera
             const textResult = data.candidates[0].content.parts[0].text;
             const recognizedItems = JSON.parse(textResult);
-
-            scannerItemsContainer.innerHTML = '';
-            
-            // 1. Zbiór opcji do dropdownów (Zlecenia, Koszty Firmowe, Opcja 'Pomiń')
-            const projectOptions = activeProjectsList.map(p => `<option value="${p.id}">Zlecenie: ${p.name}</option>`).join('');
-            const allOptions = `
-                <option value="company_expense">Koszty ogólne warsztatu</option>
-                ${projectOptions}
-                <option value="ignore" style="color: #e53e3e; font-weight: bold;">-- Nie dodawaj (Pomiń) --</option>
-            `;
 
             // 2. NOWOŚĆ: PASEK MASOWEGO PRZYPISYWANIA
             const bulkDiv = document.createElement('div');
