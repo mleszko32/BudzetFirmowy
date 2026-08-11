@@ -8,7 +8,7 @@ import Chart from 'chart.js/auto';
 
 // 1. FIREBASE CONFIG
 const firebaseConfig = {
-  apiKey: "AIzaSyCSE0dGsBBWkzV1Ceuw9GeMJB520UvVHaY",
+  apiKey: "AQ.Ab8RN6KC36sogqp3pcx_qaGYLp_Jzd05KimEP_6OxPdCShf0BA",
   authDomain: "budzetfirmowy-3dd46.firebaseapp.com",
   projectId: "budzetfirmowy-3dd46",
   storageBucket: "budzetfirmowy-3dd46.firebasestorage.app",
