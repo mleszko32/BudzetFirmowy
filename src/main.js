@@ -783,15 +783,13 @@ if (plannedListContainer) {
 }
 
 // ==========================================
-// PRAWDZIWY SKANER FAKTUR AI (GEMINI)
+// PRAWDZIWY SKANER FAKTUR AI (SERWER VERCEL)
 // ==========================================
 const btnScanInvoice = document.getElementById('btn-scan-invoice');
 const scannerLoading = document.getElementById('scanner-loading');
 const scannerResultsSection = document.getElementById('scanner-results-section');
 const scannerItemsContainer = document.getElementById('scanner-items-container');
 const btnSaveScannedItems = document.getElementById('btn-save-scanned-items'); 
-
-
 
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
@@ -808,7 +806,6 @@ if (btnScanInvoice) {
         const file = fileInput.files[0];
         
         if (!file) { alert("Najpierw zrób zdjęcie lub wybierz plik z fakturą!"); return; }
-        if (!GEMINI_API_KEY || GEMINI_API_KEY === "TWÓJ_KLUCZ_API_TUTAJ") { alert("Wpisz klucz API Google!"); return; }
 
         scannerLoading.style.display = 'block';
         scannerLoading.textContent = "Sztuczna inteligencja analizuje dokument...";
@@ -819,12 +816,7 @@ if (btnScanInvoice) {
             const base64Image = await fileToBase64(file);
             const mimeType = file.type || "image/jpeg"; 
 
-            const promptText = `Przeanalizuj to zdjęcie faktury z hurtowni stolarskiej. 
-            Wypisz wszystkie pozycje materiałowe oraz ich ostateczne ceny brutto. 
-            MUSISZ zwrócić wynik w formacie JSON jako tablicę obiektów.
-            Wymagany format: [{"name": "nazwa materiału", "price": 12.34}]`;
-
-            // Wysyłamy zdjęcie do NASZEGO ukrytego serwera na Vercelu
+            // Wysyłamy zdjęcie do NASZEGO ukrytego serwera na Vercelu (zamiast prosto do Google)
             const response = await fetch('/api/scan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -838,11 +830,21 @@ if (btnScanInvoice) {
 
             const data = await response.json();
             
-            // Odczytanie czystego JSONa bezpośrednio z serwera
+            // Odczytanie czystego JSONa prosto od naszego serwera
             const textResult = data.candidates[0].content.parts[0].text;
             const recognizedItems = JSON.parse(textResult);
 
-            // 2. NOWOŚĆ: PASEK MASOWEGO PRZYPISYWANIA
+            scannerItemsContainer.innerHTML = '';
+            
+            // 1. Zbiór opcji do dropdownów
+            const projectOptions = activeProjectsList.map(p => `<option value="${p.id}">Zlecenie: ${p.name}</option>`).join('');
+            const allOptions = `
+                <option value="company_expense">Koszty ogólne warsztatu</option>
+                ${projectOptions}
+                <option value="ignore" style="color: #e53e3e; font-weight: bold;">-- Nie dodawaj (Pomiń) --</option>
+            `;
+
+            // 2. PASEK MASOWEGO PRZYPISYWANIA
             const bulkDiv = document.createElement('div');
             bulkDiv.style = "margin-bottom: 16px; padding: 12px; background: #ebf8ff; border: 1px solid #90cdf4; border-radius: 8px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;";
             bulkDiv.innerHTML = `
@@ -854,7 +856,6 @@ if (btnScanInvoice) {
             `;
             scannerItemsContainer.appendChild(bulkDiv);
 
-            // Mechanizm masowej zmiany opcji
             const bulkSelect = bulkDiv.querySelector('#bulk-assign-select');
             bulkSelect.addEventListener('change', (e) => {
                 const val = e.target.value;
